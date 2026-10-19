@@ -21,6 +21,28 @@ public static class GameBuilder
     const string MenuScenePath = SceneDir + "MainMenu.unity";
     const string GameScenePath = SceneDir + "Game.unity";
 
+    // Arena com 32 x 16 células de 1 unidade.
+    // # parede | C cristal | P jogador
+    static readonly string[] Map =
+    {
+        "..C......#..........C.....#.....",
+        ".........#................#.....",
+        ".........#..######..####..#.....",
+        ".........#..#..........#..##..##",
+        "####..####..#...C......#........",
+        "............#..........#....C...",
+        ".C..........#..........#........",
+        "............####..######........",
+        "..........................######",
+        "######..###.....C...............",
+        "........#...######..####........",
+        "..P.....#..............#........",
+        "........#..............#..C.....",
+        "..C.........C.....######........",
+        "........#..........C............",
+        "........#..C.................C..",
+    };
+
     static readonly Color UiText = Color.white;
     static readonly Color UiMuted = new Color(0.6f, 0.7f, 0.85f);
     static readonly Color UiGold = new Color(1f, 0.82f, 0.3f);
@@ -156,6 +178,8 @@ public static class GameBuilder
 
     // ------------------------------------------------------------------ helpers de cena
 
+    static Vector2 Cell(int c, int r) => new Vector2(c - 15.5f, 7f - r);
+
     static GameObject NewSprite(string name, Transform parent, Sprite sprite, int order, float scale = 1f)
     {
         var go = new GameObject(name);
@@ -220,7 +244,7 @@ public static class GameBuilder
         poly.isTrigger = true;
         poly.pathCount = 1;
         poly.SetPath(0, new[] { new Vector2(0f, 0.41f), new Vector2(-0.38f, -0.38f), new Vector2(0.38f, -0.38f) });
-        GameObject crystalVisual = Shape("Visual", crystal.transform, "triangle", new Color(1f, 0.85f, 0.2f), 5);
+        GameObject crystalVisual = Shape("Visual", crystal.transform, "triangle", new Color(0.35f, 0.9f, 1f), 5);
         var cc = crystal.AddComponent<Collectible>();
         cc.points = 100;
         cc.visual = crystalVisual.transform;
@@ -235,10 +259,19 @@ public static class GameBuilder
     {
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-        CreateCamera(new Vector3(0f, 0.5f, -10f), 10.1f);
+        Camera cam = CreateCamera(new Vector3(0f, 0.5f, -10f), 10.1f);
+        cam.gameObject.AddComponent<CameraController>();
 
         // ---------- Arena
         Transform arena = new GameObject("Arena").transform;
+        GameObject floor = Shape("Piso", arena, "square", new Color(0.11f, 0.13f, 0.2f), -10);
+        floor.transform.position = new Vector3(0f, -0.5f, 0f);
+        var floorRenderer = floor.GetComponent<SpriteRenderer>();
+        floorRenderer.drawMode = SpriteDrawMode.Tiled;
+        floorRenderer.size = new Vector2(32f, 16f);
+
+        // zonas pintadas no chão (sprite básico com a cor trocada)
+        CreateZone(arena, "ZonaInicial", new Vector2(-12f, -5.5f), new Vector2(8f, 6f), new Color(0.3f, 0.6f, 1f, 0.07f));
 
         Transform walls = new GameObject("Paredes").transform;
         walls.SetParent(arena, false);
@@ -246,16 +279,23 @@ public static class GameBuilder
         CreateWall(walls, -17f, -8.5f, 34f, 1f);
         CreateWall(walls, -17f, 7.5f, 1f, 16f);
         CreateWall(walls, 16f, 7.5f, 1f, 16f);
+        int wallCount = BuildMapWalls(walls);
 
         // ---------- Objetos do mapa
         Transform items = new GameObject("Coletaveis").transform;
-        Place(playerPrefab, Vector2.zero, null);
+        GameObject playerGO = null;
 
-        // cristais em círculo ao redor do jogador, como no tutorial
-        for (int i = 0; i < 12; i++)
+        for (int r = 0; r < Map.Length; r++)
         {
-            float angle = i * Mathf.PI * 2f / 12f;
-            Place(crystalPrefab, new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 5f, items);
+            for (int c = 0; c < Map[r].Length; c++)
+            {
+                Vector2 p = Cell(c, r);
+                switch (Map[r][c])
+                {
+                    case 'C': Place(crystalPrefab, p, items); break;
+                    case 'P': playerGO = Place(playerPrefab, p, null); break;
+                }
+            }
         }
 
         // ---------- Gerenciadores e HUD
@@ -267,18 +307,59 @@ public static class GameBuilder
         gm.hud = hud;
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), GameScenePath);
-        log.AppendLine("Cena do jogo salva.");
+        log.AppendLine($"Cena do jogo salva ({wallCount} blocos de parede internos).");
+    }
+
+    static void CreateZone(Transform parent, string name, Vector2 center, Vector2 size, Color color)
+    {
+        GameObject zone = NewSprite(name, parent, Spr("square"), -9);
+        zone.transform.position = center;
+        zone.transform.localScale = new Vector3(size.x, size.y, 1f);
+        zone.GetComponent<SpriteRenderer>().color = color;
     }
 
     static void CreateWall(Transform parent, float left, float top, float width, float height)
     {
-        GameObject wall = Shape("Parede", parent, "square", new Color(0.6f, 0.6f, 0.65f), 0);
+        GameObject wall = Shape("Parede", parent, "square", new Color(0.27f, 0.33f, 0.48f), 0);
         wall.transform.position = new Vector3(left + width * 0.5f, top - height * 0.5f, 0f);
         var sr = wall.GetComponent<SpriteRenderer>();
         sr.drawMode = SpriteDrawMode.Tiled;
         sr.tileMode = SpriteTileMode.Continuous;
         sr.size = new Vector2(width, height);
         wall.AddComponent<BoxCollider2D>().size = new Vector2(width, height);
+    }
+
+    /// <summary>Junta as células '#' vizinhas em retângulos para usar menos colliders.</summary>
+    static int BuildMapWalls(Transform parent)
+    {
+        int rows = Map.Length, cols = Map[0].Length, count = 0;
+        var used = new bool[rows, cols];
+        bool IsFree(int r, int c) => Map[r][c] == '#' && !used[r, c];
+
+        for (int r = 0; r < rows; r++)
+        {
+            for (int c = 0; c < cols; c++)
+            {
+                if (!IsFree(r, c)) continue;
+                int w = 1;
+                while (c + w < cols && IsFree(r, c + w)) w++;
+                int h = 1;
+                while (r + h < rows)
+                {
+                    bool fullRow = true;
+                    for (int k = 0; k < w; k++) fullRow &= IsFree(r + h, c + k);
+                    if (!fullRow) break;
+                    h++;
+                }
+                for (int dr = 0; dr < h; dr++)
+                    for (int dc = 0; dc < w; dc++)
+                        used[r + dr, c + dc] = true;
+
+                CreateWall(parent, c - 16f, 7.5f - r, w, h);
+                count++;
+            }
+        }
+        return count;
     }
 
     static Camera CreateCamera(Vector3 position, float size)
