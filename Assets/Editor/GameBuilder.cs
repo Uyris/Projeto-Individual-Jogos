@@ -19,7 +19,7 @@ public static class GameBuilder
     static StringBuilder log;
     static PhysicsMaterial2D noFriction;
 
-    static GameObject playerPrefab;
+    static GameObject playerPrefab, crystalPrefab;
 
     [MenuItem("Coletor Estelar/Reconstruir Jogo")]
     public static void BuildFromMenu()
@@ -32,6 +32,7 @@ public static class GameBuilder
         log = new StringBuilder();
         EnsureFolder(PrefabDir);
         EnsureFolder(MaterialDir);
+        EnsureTags("Coletavel");
         ConfigureImporters();
 
         CreateMaterials();
@@ -56,6 +57,23 @@ public static class GameBuilder
         string parent = Path.GetDirectoryName(path).Replace('\\', '/');
         EnsureFolder(parent);
         AssetDatabase.CreateFolder(parent, Path.GetFileName(path));
+    }
+
+    static void EnsureTags(params string[] tags)
+    {
+        var tagManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+        SerializedProperty list = tagManager.FindProperty("tags");
+        foreach (string tag in tags)
+        {
+            bool exists = false;
+            for (int i = 0; i < list.arraySize; i++)
+                if (list.GetArrayElementAtIndex(i).stringValue == tag) exists = true;
+            if (exists) continue;
+            list.InsertArrayElementAtIndex(list.arraySize);
+            list.GetArrayElementAtIndex(list.arraySize - 1).stringValue = tag;
+            log.AppendLine("Tag criada: " + tag);
+        }
+        tagManager.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static void ConfigureImporters()
@@ -159,6 +177,17 @@ public static class GameBuilder
         var pc = player.AddComponent<PlayerController>();
         playerPrefab = SavePrefab(player);
 
+        // ---------- Cristal (o triângulo coletável do tutorial)
+        var crystal = new GameObject("Cristal") { tag = "Coletavel" };
+        var poly = crystal.AddComponent<PolygonCollider2D>();
+        poly.isTrigger = true;
+        poly.pathCount = 1;
+        poly.SetPath(0, new[] { new Vector2(0f, 0.41f), new Vector2(-0.38f, -0.38f), new Vector2(0.38f, -0.38f) });
+        GameObject crystalVisual = Shape("Visual", crystal.transform, "triangle", new Color(1f, 0.85f, 0.2f), 5);
+        var cc = crystal.AddComponent<Collectible>();
+        cc.visual = crystalVisual.transform;
+        crystalPrefab = SavePrefab(crystal);
+
         log.AppendLine("Prefabs criados.");
     }
 
@@ -181,7 +210,15 @@ public static class GameBuilder
         CreateWall(walls, 16f, 7.5f, 1f, 16f);
 
         // ---------- Objetos do mapa
+        Transform items = new GameObject("Coletaveis").transform;
         Place(playerPrefab, Vector2.zero, null);
+
+        // cristais em círculo ao redor do jogador, como no tutorial
+        for (int i = 0; i < 12; i++)
+        {
+            float angle = i * Mathf.PI * 2f / 12f;
+            Place(crystalPrefab, new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 5f, items);
+        }
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), GameScenePath);
         log.AppendLine("Cena do jogo salva.");
