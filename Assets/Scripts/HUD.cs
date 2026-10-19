@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Interface durante a partida: pontuação, cronômetro, cristais, oxigênio
-/// e os painéis de derrota e vitória.
+/// e os painéis de pausa, derrota e vitória.
 /// </summary>
 public class HUD : MonoBehaviour
 {
@@ -16,6 +16,7 @@ public class HUD : MonoBehaviour
     public Text oxygenText;
 
     [Header("Painéis")]
+    public GameObject pausePanel;
     public GameObject gameOverPanel;
     public Text gameOverReasonText;
     public Text gameOverStatsText;
@@ -24,6 +25,9 @@ public class HUD : MonoBehaviour
     public Text victoryRecordText;
 
     [Header("Botões")]
+    public Button resumeButton;
+    public Button pauseRestartButton;
+    public Button pauseMenuButton;
     public Button gameOverRestartButton;
     public Button gameOverMenuButton;
     public Button victoryRestartButton;
@@ -35,11 +39,15 @@ public class HUD : MonoBehaviour
     void Start()
     {
         GameManager gm = GameManager.Instance;
+        resumeButton.onClick.AddListener(gm.Resume);
+        pauseRestartButton.onClick.AddListener(gm.Restart);
+        pauseMenuButton.onClick.AddListener(gm.GoToMenu);
         gameOverRestartButton.onClick.AddListener(gm.Restart);
         gameOverMenuButton.onClick.AddListener(gm.GoToMenu);
         victoryRestartButton.onClick.AddListener(gm.Restart);
         victoryMenuButton.onClick.AddListener(gm.GoToMenu);
 
+        pausePanel.SetActive(false);
         gameOverPanel.SetActive(false);
         victoryPanel.SetActive(false);
     }
@@ -65,6 +73,11 @@ public class HUD : MonoBehaviour
     static void SetFill(RectTransform fill, float amount)
     {
         fill.anchorMax = new Vector2(Mathf.Clamp01(amount), 1f);
+    }
+
+    public void ShowPause(bool show)
+    {
+        pausePanel.SetActive(show);
     }
 
     public void ShowGameOver(string reason, float time, int score, int crystals, int totalCrystals)

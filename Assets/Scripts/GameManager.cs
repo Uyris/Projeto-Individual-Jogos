@@ -5,11 +5,11 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// GameManager estático (tutorial "End Game, Static GameManager"): controla o cronômetro,
-/// o oxigênio (tempo limite), a pontuação e o fim de jogo (vitória ou derrota).
+/// o oxigênio (tempo limite), a pontuação, a pausa e o fim de jogo (vitória ou derrota).
 /// </summary>
 public class GameManager : MonoBehaviour
 {
-    public enum State { Playing, Won, Lost }
+    public enum State { Playing, Paused, Won, Lost }
 
     public static GameManager Instance { get; private set; }
     public static bool IsPlaying => Instance != null && Instance.CurrentState == State.Playing;
@@ -59,6 +59,12 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        if (GameInput.Pause.WasPressedThisFrame())
+        {
+            if (CurrentState == State.Playing) Pause();
+            else if (CurrentState == State.Paused) Resume();
+        }
+
         if (CurrentState != State.Playing) return;
 
         // Cronômetro da partida e oxigênio que acaba com o tempo.
@@ -123,6 +129,22 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSecondsRealtime(1.1f);
         Time.timeScale = 0f;
         showPanel();
+    }
+
+    public void Pause()
+    {
+        if (CurrentState != State.Playing) return;
+        CurrentState = State.Paused;
+        Time.timeScale = 0f;
+        hud.ShowPause(true);
+    }
+
+    public void Resume()
+    {
+        if (CurrentState != State.Paused) return;
+        CurrentState = State.Playing;
+        Time.timeScale = 1f;
+        hud.ShowPause(false);
     }
 
     public void Restart()

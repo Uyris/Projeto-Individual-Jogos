@@ -560,6 +560,16 @@ public static class GameBuilder
         hud.oxygenText = AddText(hud.oxygenFill.parent.parent, "TextoOxigenio", "60s", pixelFont, 16, UiText, TextAnchor.MiddleCenter,
                                  center, new Vector2(0f, 0f), new Vector2(320f, 30f));
 
+        // ---------- pausa
+        var (pauseRoot, pauseWindow) = AddPanel(root, "PainelPausa", "PAUSADO", Color.white, new Vector2(900f, 680f));
+        AddText(pauseWindow, "Dicas",
+                "<color=#ffd23f>MOVER</color>  WASD / SETAS\n<color=#ffd23f>PAUSA</color>  ESC / P",
+                bodyFont, 40, UiText, TextAnchor.MiddleCenter, center, new Vector2(0f, 130f), new Vector2(820f, 160f));
+        hud.resumeButton = AddButton(pauseWindow, "BotaoContinuar", "CONTINUAR", new Vector2(0f, -40f), new Vector2(520f, 76f));
+        hud.pauseRestartButton = AddButton(pauseWindow, "BotaoReiniciar", "REINICIAR", new Vector2(0f, -136f), new Vector2(520f, 76f));
+        hud.pauseMenuButton = AddButton(pauseWindow, "BotaoMenu", "MENU PRINCIPAL", new Vector2(0f, -232f), new Vector2(520f, 76f));
+        hud.pausePanel = pauseRoot;
+
         // ---------- derrota
         var (overRoot, overWindow) = AddPanel(root, "PainelDerrota", "FIM DE JOGO", new Color(1f, 0.35f, 0.35f), new Vector2(900f, 680f));
         hud.gameOverReasonText = AddText(overWindow, "Motivo", "", titleFont, 52, new Color(1f, 0.7f, 0.4f), TextAnchor.MiddleCenter,

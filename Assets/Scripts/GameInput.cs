@@ -8,15 +8,18 @@ using UnityEngine.InputSystem;
 public static class GameInput
 {
     static InputAction move;
+    static InputAction pause;
 
     public static InputAction Move { get { Init(); return move; } }
+    public static InputAction Pause { get { Init(); return pause; } }
 
     // Garante que as ações sejam recriadas mesmo com "Domain Reload" desligado no editor.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetActions()
     {
         move?.Dispose();
-        move = null;
+        pause?.Dispose();
+        move = pause = null;
     }
 
     static void Init()
@@ -31,6 +34,11 @@ public static class GameInput
             .With("Up", "<Keyboard>/upArrow").With("Down", "<Keyboard>/downArrow")
             .With("Left", "<Keyboard>/leftArrow").With("Right", "<Keyboard>/rightArrow");
 
+        pause = new InputAction("Pause", InputActionType.Button);
+        pause.AddBinding("<Keyboard>/escape");
+        pause.AddBinding("<Keyboard>/p");
+
         move.Enable();
+        pause.Enable();
     }
 }
