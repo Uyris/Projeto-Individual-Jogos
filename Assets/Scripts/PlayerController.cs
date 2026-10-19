@@ -1,7 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Astronauta controlado pelo jogador: movimento com Rigidbody2D e coleta de itens por trigger.
+/// Astronauta controlado pelo jogador: movimento com Rigidbody2D (corrigindo a diagonal)
+/// e coleta de itens por trigger.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
@@ -9,6 +10,10 @@ public class PlayerController : MonoBehaviour
     [Header("Movimento")]
     public float speed = 6f;
     public float acceleration = 50f;
+
+    [Header("Referências")]
+    public AudioSource audioSource;
+    public AudioClip collectClip;
 
     Rigidbody2D rb;
     Vector2 movement;
@@ -20,7 +25,9 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        movement = GameInput.Move.ReadValue<Vector2>();
+        // Tutorial (Movimentação Diagonal): o vetor nunca passa de tamanho 1, então andar na
+        // diagonal não fica mais rápido.
+        movement = Vector2.ClampMagnitude(GameInput.Move.ReadValue<Vector2>(), 1f);
     }
 
     void FixedUpdate()
@@ -39,6 +46,7 @@ public class PlayerController : MonoBehaviour
             if (item == null || item.Collected) return;
 
             item.Collected = true;
+            audioSource.PlayOneShot(collectClip);
             Destroy(other.gameObject);
         }
     }

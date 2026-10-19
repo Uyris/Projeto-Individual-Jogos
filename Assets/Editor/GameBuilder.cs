@@ -11,6 +11,7 @@ using UnityEngine;
 public static class GameBuilder
 {
     const string ArtDir = "Assets/Art/";
+    const string AudioDir = "Assets/Audio/";
     const string PrefabDir = "Assets/Prefabs/";
     const string MaterialDir = "Assets/Materials/";
     const string SceneDir = "Assets/Scenes/";
@@ -99,9 +100,23 @@ public static class GameBuilder
             ti.SetTextureSettings(settings);
             ti.SaveAndReimport();
         }
+
+        foreach (string guid in AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Audio" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (!(AssetImporter.GetAtPath(path) is AudioImporter ai)) continue;
+            bool music = path.Contains("/Music/");
+            AudioImporterSampleSettings s = ai.defaultSampleSettings;
+            s.loadType = music ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
+            s.compressionFormat = AudioCompressionFormat.Vorbis;
+            s.quality = music ? 0.55f : 0.7f;
+            ai.defaultSampleSettings = s;
+            ai.SaveAndReimport();
+        }
     }
 
     static Sprite Spr(string name) => Load<Sprite>(ArtDir + "Sprites/" + name + ".png");
+    static AudioClip Sfx(string name) => Load<AudioClip>(AudioDir + "SFX/" + name + ".wav");
 
     static T Load<T>(string path) where T : Object
     {
@@ -171,10 +186,14 @@ public static class GameBuilder
         rb.sleepMode = RigidbodySleepMode2D.NeverSleep;
         rb.sharedMaterial = noFriction;
         player.AddComponent<CircleCollider2D>().radius = 0.36f;
+        var audio = player.AddComponent<AudioSource>();
+        audio.playOnAwake = false;
 
         GameObject visual = Shape("Visual", player.transform, "circle", new Color(0.9f, 0.25f, 0.25f), 20, 0.75f);
 
         var pc = player.AddComponent<PlayerController>();
+        pc.audioSource = audio;
+        pc.collectClip = Sfx("collect");
         playerPrefab = SavePrefab(player);
 
         // ---------- Cristal (o triângulo coletável do tutorial)
