@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public class GameManager : MonoBehaviour
 {
-    public enum State { Playing, Paused, Won, Lost }
+    public enum State { Countdown, Playing, Paused, Won, Lost }
 
     public static GameManager Instance { get; private set; }
     public static bool IsPlaying => Instance != null && Instance.CurrentState == State.Playing;
@@ -33,6 +33,8 @@ public class GameManager : MonoBehaviour
     public ExitPod exitPod;
 
     [Header("Sons")]
+    public AudioClip countdownClip;
+    public AudioClip goClip;
     public AudioClip unlockClip;
     public AudioClip alarmClip;
     public AudioClip victoryClip;
@@ -65,7 +67,26 @@ public class GameManager : MonoBehaviour
         foreach (Collectible c in FindObjectsByType<Collectible>(FindObjectsSortMode.None))
             if (c.kind == Collectible.Kind.Crystal) TotalCrystals++;
 
+        StartCoroutine(CountdownRoutine());
+    }
+
+    IEnumerator CountdownRoutine()
+    {
+        CurrentState = State.Countdown;
+        for (int i = 3; i > 0; i--)
+        {
+            hud.ShowCountdown(i.ToString());
+            AudioManager.PlaySfx(countdownClip);
+            yield return new WaitForSeconds(0.7f);
+        }
+
+        hud.ShowCountdown("VAI!");
+        AudioManager.PlaySfx(goClip);
         CurrentState = State.Playing;
+        hud.ShowMessage($"COLETE OS {TotalCrystals} CRISTAIS!", 2.5f);
+
+        yield return new WaitForSeconds(0.7f);
+        hud.ShowCountdown(null);
     }
 
     void Update()

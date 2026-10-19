@@ -12,6 +12,8 @@ public class HUD : MonoBehaviour
     public Text timeText;
     public Text crystalText;
     public Image[] hearts;
+    public Sprite heartFull;
+    public Sprite heartEmpty;
     public RectTransform oxygenFill;
     public Image oxygenFillImage;
     public Text oxygenText;
@@ -20,6 +22,7 @@ public class HUD : MonoBehaviour
 
     [Header("Mensagens")]
     public Text messageText;
+    public Text countdownText;
 
     [Header("Painéis")]
     public GameObject pausePanel;
@@ -43,10 +46,11 @@ public class HUD : MonoBehaviour
     static readonly Color OxygenLowColor = new Color(1f, 0.3f, 0.3f);
     static readonly Color StaminaColor = new Color(1f, 0.82f, 0.25f);
     static readonly Color StaminaLowColor = new Color(0.55f, 0.45f, 0.25f);
-    static readonly Color HeartColor = new Color(0.91f, 0.21f, 0.29f);
-    static readonly Color HeartEmptyColor = new Color(0.23f, 0.25f, 0.32f);
 
     float messageTimer;
+    float scorePunch;
+    float countdownPunch;
+    int lastScore;
 
     void Start()
     {
@@ -73,12 +77,19 @@ public class HUD : MonoBehaviour
         float dt = Time.unscaledDeltaTime;
 
         scoreText.text = gm.Score.ToString("00000");
+        if (gm.Score != lastScore)
+        {
+            lastScore = gm.Score;
+            scorePunch = 1f;
+        }
+        scorePunch = Mathf.MoveTowards(scorePunch, 0f, dt * 4f);
+        scoreText.transform.localScale = Vector3.one * (1f + scorePunch * 0.25f);
 
         timeText.text = GameManager.FormatTime(gm.ElapsedTime);
         crystalText.text = $"{gm.CrystalsCollected}/{gm.TotalCrystals}";
 
         for (int i = 0; i < hearts.Length; i++)
-            hearts[i].color = i < player.Health ? HeartColor : HeartEmptyColor;
+            hearts[i].sprite = i < player.Health ? heartFull : heartEmpty;
 
         bool low = gm.Oxygen <= gm.lowOxygen;
         SetFill(oxygenFill, gm.Oxygen / gm.maxOxygen);
@@ -97,6 +108,12 @@ public class HUD : MonoBehaviour
             c.a = Mathf.Clamp01(messageTimer * 2f);
             messageText.color = c;
         }
+
+        if (countdownText.gameObject.activeSelf)
+        {
+            countdownPunch = Mathf.MoveTowards(countdownPunch, 0f, dt * 3f);
+            countdownText.transform.localScale = Vector3.one * (1f + countdownPunch * 0.6f);
+        }
     }
 
     static void SetFill(RectTransform fill, float amount)
@@ -111,6 +128,13 @@ public class HUD : MonoBehaviour
         Color c = messageText.color;
         c.a = 1f;
         messageText.color = c;
+    }
+
+    public void ShowCountdown(string text)
+    {
+        countdownText.gameObject.SetActive(!string.IsNullOrEmpty(text));
+        countdownText.text = text ?? "";
+        countdownPunch = 1f;
     }
 
     public void ShowPause(bool show)

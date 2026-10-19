@@ -16,10 +16,11 @@ from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPR = os.path.join(ROOT, "Assets", "Art", "Sprites")
+UI = os.path.join(ROOT, "Assets", "Art", "UI")
 BG = os.path.join(ROOT, "Assets", "Art", "Backgrounds")
 MUS = os.path.join(ROOT, "Assets", "Audio", "Music")
 SFX = os.path.join(ROOT, "Assets", "Audio", "SFX")
-for d in (SPR, BG, MUS, SFX):
+for d in (SPR, UI, BG, MUS, SFX):
     os.makedirs(d, exist_ok=True)
 
 rng = np.random.default_rng(7)
@@ -298,6 +299,45 @@ def make_wall():
     return img
 
 
+def make_heart(full):
+    img = canvas(16)
+    pts = [(1, 5), (3, 2), (6, 2), (8, 4), (10, 2), (13, 2), (15, 5), (15, 7), (8, 14), (1, 7)]
+    poly(img, pts, "#e8364a" if full else "#3a3f52")
+    if full:
+        rect(img, 3, 4, 5, 5, "#ff9aa6")
+        px(img, 3, 6, "#ff9aa6")
+        poly(img, [(9, 11), (14, 7), (15, 7), (8, 14)], "#a01c30")
+    return outline(img, "#0d0a14")
+
+
+def make_icon_o2():
+    img = canvas(16)
+    disc(img, 8, 8, 7, "#2fbf5f")
+    disc(img, 8, 8, 5.5, "#5fe58a")
+    for (x, y) in [(4, 6), (4, 7), (4, 8), (4, 9), (5, 5), (6, 5), (7, 6), (7, 7), (7, 8), (7, 9), (5, 10), (6, 10)]:
+        px(img, x, y, "#ffffff")
+    for (x, y) in [(9, 6), (10, 5), (11, 5), (12, 6), (11, 7), (10, 8), (9, 9), (9, 10), (10, 10), (11, 10), (12, 10)]:
+        px(img, x, y, "#ffffff")
+    return outline(img)
+
+
+def make_icon_bolt():
+    img = canvas(16)
+    poly(img, [(9, 0), (2, 9), (7, 9), (5, 15), (13, 6), (8, 6), (11, 0)], "#ffd23f")
+    line(img, (9, 1), (4, 8), "#fff1a8")
+    return outline(img)
+
+
+def make_icon_clock():
+    img = canvas(16)
+    disc(img, 8, 8.5, 7, "#dfe5f0")
+    disc(img, 8, 8.5, 5.5, "#2b3550")
+    rect(img, 7, 4, 8, 9, "#ffffff")
+    rect(img, 8, 8, 11, 9, "#ffd23f")
+    rect(img, 6, 0, 9, 1, "#dfe5f0")
+    return outline(img)
+
+
 def make_white(n=8):
     img = canvas(n)
     img[...] = (255, 255, 255, 255)
@@ -315,6 +355,45 @@ def make_spark():
     rect(img, 3, 0, 4, 7, (255, 255, 255, 255))
     rect(img, 0, 3, 7, 4, (255, 255, 255, 255))
     rect(img, 2, 2, 5, 5, (255, 255, 255, 255))
+    return img
+
+
+def make_panel():
+    img = canvas(32)
+    rect(img, 2, 2, 29, 29, (16, 22, 40, 235))
+    rect(img, 2, 0, 29, 1, "#5ad1ff")
+    rect(img, 2, 30, 29, 31, "#2a7fb0")
+    rect(img, 0, 2, 1, 29, "#5ad1ff")
+    rect(img, 30, 2, 31, 29, "#2a7fb0")
+    px(img, 1, 1, "#5ad1ff")
+    px(img, 30, 1, "#5ad1ff")
+    px(img, 1, 30, "#2a7fb0")
+    px(img, 30, 30, "#2a7fb0")
+    return img
+
+
+def make_button():
+    img = canvas(24)
+    rect(img, 2, 2, 21, 21, "#d6deef")
+    rect(img, 2, 0, 21, 1, "#ffffff")
+    rect(img, 0, 2, 1, 21, "#ffffff")
+    rect(img, 22, 2, 23, 21, "#8f9ab3")
+    rect(img, 2, 22, 21, 23, "#8f9ab3")
+    rect(img, 2, 18, 21, 21, "#b9c4dc")
+    px(img, 1, 1, "#ffffff")
+    px(img, 22, 1, "#c8d0e0")
+    px(img, 1, 22, "#c8d0e0")
+    px(img, 22, 22, "#8f9ab3")
+    return img
+
+
+def make_bar():
+    img = canvas(12)
+    rect(img, 1, 1, 10, 10, (8, 10, 20, 220))
+    rect(img, 1, 0, 10, 0, "#9aa3b8")
+    rect(img, 1, 11, 10, 11, "#9aa3b8")
+    rect(img, 0, 1, 0, 10, "#9aa3b8")
+    rect(img, 11, 1, 11, 10, "#9aa3b8")
     return img
 
 
@@ -369,6 +448,16 @@ def build_sprites():
     save(make_white(32), SPR, "square.png")
     save(make_circle(32), SPR, "circle.png")
     save(make_spark(), SPR, "spark.png")
+    save(make_heart(True), UI, "heart_full.png")
+    save(make_heart(False), UI, "heart_empty.png")
+    save(make_icon_o2(), UI, "icon_oxygen.png")
+    save(make_icon_bolt(), UI, "icon_stamina.png")
+    save(make_icon_clock(), UI, "icon_clock.png")
+    save(make_crystal(16), UI, "icon_crystal.png")
+    save(make_panel(), UI, "panel.png")
+    save(make_button(), UI, "button.png")
+    save(make_bar(), UI, "bar_frame.png")
+    save(make_white(8), UI, "white.png")
     save(make_space_bg(), BG, "space.png")
 
 
@@ -639,6 +728,10 @@ def sfx_alert():
     return np.concatenate([a, np.zeros(int(0.03 * SR), np.float32), a])
 
 
+def sfx_countdown(high=False):
+    return note("pulse", 84 if high else 72, 0.25 if high else 0.12, 0.4, duty=0.5, d=0.04, s=0.6, r=0.06)
+
+
 def build_audio():
     write_wav(os.path.join(MUS, "music_game.wav"), game_music(), 0.8)
     write_wav(os.path.join(MUS, "music_menu.wav"), menu_music(), 0.75)
@@ -653,6 +746,8 @@ def build_audio():
     write_wav(os.path.join(SFX, "select.wav"), sfx_select(), 0.4)
     write_wav(os.path.join(SFX, "alarm.wav"), sfx_alarm(), 0.6)
     write_wav(os.path.join(SFX, "alert.wav"), sfx_alert(), 0.6)
+    write_wav(os.path.join(SFX, "countdown.wav"), sfx_countdown(), 0.6)
+    write_wav(os.path.join(SFX, "go.wav"), sfx_countdown(True), 0.7)
 
 
 if __name__ == "__main__":

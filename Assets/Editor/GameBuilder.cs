@@ -78,8 +78,9 @@ public static class GameBuilder
         EnsureTags("Coletavel", "Inimigo", "Parede", "Saida");
         ConfigureImporters();
 
-        // por enquanto a fonte padrão do Unity
-        pixelFont = bodyFont = titleFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        pixelFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/PressStart2P-Regular.ttf");
+        bodyFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/VT323-Regular.ttf");
+        titleFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Jersey10-Regular.ttf");
 
         CreateMaterials();
         CreateVolumeProfile();
@@ -131,11 +132,13 @@ public static class GameBuilder
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (!(AssetImporter.GetAtPath(path) is TextureImporter ti)) continue;
 
+            bool ui = path.Contains("/UI/");
             bool background = path.Contains("/Backgrounds/");
+            string file = Path.GetFileNameWithoutExtension(path);
 
             ti.textureType = TextureImporterType.Sprite;
             ti.spriteImportMode = SpriteImportMode.Single;
-            ti.spritePixelsPerUnit = background ? 24 : 32;
+            ti.spritePixelsPerUnit = background ? 24 : (ui ? 25 : 32);
             ti.filterMode = background ? FilterMode.Bilinear : FilterMode.Point;
             ti.textureCompression = TextureImporterCompression.Uncompressed;
             ti.mipmapEnabled = false;
@@ -147,6 +150,14 @@ public static class GameBuilder
             settings.spriteMeshType = SpriteMeshType.FullRect;
             settings.spriteAlignment = (int)SpriteAlignment.Center;
             ti.SetTextureSettings(settings);
+
+            switch (file)
+            {
+                case "panel": ti.spriteBorder = new Vector4(4, 4, 4, 4); break;
+                case "button": ti.spriteBorder = new Vector4(4, 6, 4, 4); break;
+                case "bar_frame": ti.spriteBorder = new Vector4(2, 2, 2, 2); break;
+                default: ti.spriteBorder = Vector4.zero; break;
+            }
             ti.SaveAndReimport();
         }
 
@@ -165,10 +176,9 @@ public static class GameBuilder
     }
 
     static Sprite Spr(string name) => Load<Sprite>(ArtDir + "Sprites/" + name + ".png");
+    static Sprite UiSpr(string name) => Load<Sprite>(ArtDir + "UI/" + name + ".png");
     static AudioClip Sfx(string name) => Load<AudioClip>(AudioDir + "SFX/" + name + ".wav");
     static AudioClip Music(string name) => Load<AudioClip>(AudioDir + "Music/" + name + ".wav");
-    // sprites padrão da interface do Unity, até a interface ganhar arte própria
-    static Sprite DefaultUi(string file) => AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/" + file);
 
     static T Load<T>(string path) where T : Object
     {
@@ -592,6 +602,8 @@ public static class GameBuilder
         gm.player = playerGO.GetComponent<PlayerController>();
         gm.exitPod = podGO.GetComponent<ExitPod>();
         gm.hud = hud;
+        gm.countdownClip = Sfx("countdown");
+        gm.goClip = Sfx("go");
         gm.unlockClip = Sfx("unlock");
         gm.alarmClip = Sfx("alarm");
         gm.victoryClip = Sfx("victory");
@@ -795,7 +807,7 @@ public static class GameBuilder
 
     static Button AddButton(Transform parent, string name, string label, Vector2 position, Vector2 size, int fontSize = 48)
     {
-        Image image = AddImage(parent, name, DefaultUi("UISprite.psd"), Color.white, new Vector2(0.5f, 0.5f), position, size, true);
+        Image image = AddImage(parent, name, UiSpr("button"), Color.white, new Vector2(0.5f, 0.5f), position, size, true);
         image.raycastTarget = true;
         var button = image.gameObject.AddComponent<Button>();
         ColorBlock colors = button.colors;
@@ -821,7 +833,7 @@ public static class GameBuilder
         dim.color = new Color(0f, 0f, 0.02f, 0.72f);
         dim.raycastTarget = true;
 
-        Image window = AddImage(root, "Janela", DefaultUi("Background.psd"), new Color(0.09f, 0.12f, 0.22f), new Vector2(0.5f, 0.5f), Vector2.zero, size, true);
+        Image window = AddImage(root, "Janela", UiSpr("panel"), Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, size, true);
         AddText(window.transform, "Titulo", title, titleFont, 80, titleColor, TextAnchor.MiddleCenter,
                 new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(size.x - 40f, 80f));
         return (root.gameObject, window.rectTransform);
@@ -829,14 +841,14 @@ public static class GameBuilder
 
     static (RectTransform fill, Image fillImage) AddBar(Transform parent, string name, Vector2 anchor, Vector2 position, Vector2 size, Color color)
     {
-        Image frame = AddImage(parent, name, Spr("square"), new Color(0.05f, 0.06f, 0.12f), anchor, position, size, false, new Vector2(1f, 0.5f));
+        Image frame = AddImage(parent, name, UiSpr("bar_frame"), Color.white, anchor, position, size, true, new Vector2(1f, 0.5f));
         RectTransform area = Stretch(NewUI("Area", frame.transform), 8f);
         RectTransform fill = NewUI("Preenchimento", area);
         fill.anchorMin = Vector2.zero;
         fill.anchorMax = Vector2.one;
         fill.offsetMin = fill.offsetMax = Vector2.zero;
         var fillImage = fill.gameObject.AddComponent<Image>();
-        fillImage.sprite = Spr("square");
+        fillImage.sprite = UiSpr("white");
         fillImage.color = color;
         fillImage.raycastTarget = false;
         return (fill, fillImage);
@@ -866,16 +878,19 @@ public static class GameBuilder
         Vector2 left = new Vector2(0f, 0.5f), center = new Vector2(0.5f, 0.5f), right = new Vector2(1f, 0.5f);
 
         // ---------- barra superior
-        Image bar = AddImage(root, "BarraSuperior", Spr("square"), new Color(0.03f, 0.04f, 0.09f, 0.85f),
+        Image bar = AddImage(root, "BarraSuperior", UiSpr("white"), new Color(0.03f, 0.04f, 0.09f, 0.85f),
                              new Vector2(0.5f, 1f), Vector2.zero, new Vector2(0f, 112f), false, new Vector2(0.5f, 1f));
         bar.rectTransform.anchorMin = new Vector2(0f, 1f);
         bar.rectTransform.anchorMax = new Vector2(1f, 1f);
+        Image line = AddImage(bar.transform, "Linha", UiSpr("white"), new Color(0.35f, 0.8f, 1f, 0.6f),
+                              new Vector2(0.5f, 0f), Vector2.zero, new Vector2(0f, 4f), false, new Vector2(0.5f, 0f));
+        line.rectTransform.anchorMin = new Vector2(0f, 0f);
+        line.rectTransform.anchorMax = new Vector2(1f, 0f);
         Transform b = bar.transform;
 
-        AddText(b, "RotuloCristais", "CRISTAIS", pixelFont, 16, UiMuted, TextAnchor.MiddleLeft,
-                left, new Vector2(40f, 24f), new Vector2(240f, 30f), new Vector2(0f, 0.5f));
+        AddImage(b, "IconeCristal", UiSpr("icon_crystal"), Color.white, left, new Vector2(60f, 0f), new Vector2(56f, 56f));
         hud.crystalText = AddText(b, "Cristais", "0/12", pixelFont, 32, UiCyan, TextAnchor.MiddleLeft,
-                                  left, new Vector2(40f, -16f), new Vector2(240f, 50f), new Vector2(0f, 0.5f));
+                                  left, new Vector2(100f, -2f), new Vector2(200f, 60f), new Vector2(0f, 0.5f));
         AddText(b, "RotuloPontos", "PONTOS", pixelFont, 16, UiMuted, TextAnchor.MiddleLeft,
                 left, new Vector2(310f, 24f), new Vector2(240f, 30f), new Vector2(0f, 0.5f));
         hud.scoreText = AddText(b, "Pontos", "00000", pixelFont, 32, UiGold, TextAnchor.MiddleLeft,
@@ -883,22 +898,23 @@ public static class GameBuilder
 
         AddText(b, "RotuloTempo", "TEMPO", pixelFont, 16, UiMuted, TextAnchor.MiddleCenter,
                 center, new Vector2(0f, 26f), new Vector2(300f, 30f));
+        AddImage(b, "IconeRelogio", UiSpr("icon_clock"), Color.white, center, new Vector2(-196f, -14f), new Vector2(44f, 44f));
         hud.timeText = AddText(b, "Tempo", "00:00.00", pixelFont, 40, UiText, TextAnchor.MiddleCenter,
                                center, new Vector2(16f, -14f), new Vector2(380f, 56f));
 
         hud.hearts = new Image[3];
         for (int i = 0; i < 3; i++)
-            hud.hearts[i] = AddImage(b, "Coracao" + i, Spr("circle"), Color.white, right,
-                                     new Vector2(-188f + i * 64f, 0f), new Vector2(44f, 44f));
+            hud.hearts[i] = AddImage(b, "Coracao" + i, UiSpr("heart_full"), Color.white, right,
+                                     new Vector2(-188f + i * 64f, 0f), new Vector2(52f, 52f));
+        hud.heartFull = UiSpr("heart_full");
+        hud.heartEmpty = UiSpr("heart_empty");
 
-        AddText(b, "RotuloOxigenio", "O2", pixelFont, 16, UiMuted, TextAnchor.MiddleRight,
-                right, new Vector2(-626f, 20f), new Vector2(80f, 34f));
+        AddImage(b, "IconeOxigenio", UiSpr("icon_oxygen"), Color.white, right, new Vector2(-616f, 20f), new Vector2(36f, 36f));
         (hud.oxygenFill, hud.oxygenFillImage) = AddBar(b, "BarraOxigenio", right, new Vector2(-250f, 20f), new Vector2(330f, 34f), UiCyan);
         hud.oxygenText = AddText(hud.oxygenFill.parent.parent, "TextoOxigenio", "60s", pixelFont, 16, UiText, TextAnchor.MiddleCenter,
                                  center, new Vector2(0f, 0f), new Vector2(320f, 30f));
 
-        AddText(b, "RotuloStamina", "DASH", pixelFont, 16, UiMuted, TextAnchor.MiddleRight,
-                right, new Vector2(-626f, -24f), new Vector2(80f, 34f));
+        AddImage(b, "IconeStamina", UiSpr("icon_stamina"), Color.white, right, new Vector2(-616f, -24f), new Vector2(32f, 32f));
         (hud.staminaFill, hud.staminaFillImage) = AddBar(b, "BarraStamina", right, new Vector2(-250f, -24f), new Vector2(330f, 24f), UiGold);
 
         // ---------- mensagens
@@ -908,6 +924,9 @@ public static class GameBuilder
         var outline = hud.messageText.gameObject.AddComponent<Outline>();
         outline.effectColor = new Color(0f, 0f, 0f, 0.9f);
         outline.effectDistance = new Vector2(3f, -3f);
+
+        hud.countdownText = AddText(root, "Contagem", "3", pixelFont, 120, Color.white, TextAnchor.MiddleCenter,
+                                    center, new Vector2(0f, 40f), new Vector2(900f, 220f));
 
         // ---------- pausa
         var (pauseRoot, pauseWindow) = AddPanel(root, "PainelPausa", "PAUSADO", Color.white, new Vector2(900f, 680f));
@@ -961,25 +980,102 @@ public static class GameBuilder
         Transform root = canvas.transform;
         Vector2 center = new Vector2(0.5f, 0.5f);
 
+        RectTransform bg = Stretch(NewUI("Fundo", root));
+        var raw = bg.gameObject.AddComponent<RawImage>();
+        raw.texture = Load<Texture2D>(ArtDir + "Backgrounds/space.png");
+        raw.raycastTarget = false;
+        bg.gameObject.AddComponent<UVScroller>();
+
+        AddDecoration(root, Spr("player"), new Vector2(-640f, 60f), 220f, 20f, 0f, 0f);
+        AddDecoration(root, Spr("crystal"), new Vector2(800f, 400f), 120f, 14f, 20f, 1f);
+        AddDecoration(root, Spr("crystal"), new Vector2(760f, -40f), 80f, 10f, -30f, 2f);
+        AddDecoration(root, Spr("crystal"), new Vector2(-780f, -320f), 90f, 12f, 25f, 3f);
+        AddDecoration(root, Spr("alien"), new Vector2(640f, -300f), 170f, 16f, 0f, 4f);
+        AddDecoration(root, Spr("drone"), new Vector2(-820f, 410f), 120f, 10f, 80f, 5f);
+        AddDecoration(root, Spr("oxygen_tank"), new Vector2(-560f, -280f), 90f, 14f, -15f, 6f);
+
         AddText(root, "Titulo", "COLETOR ESTELAR", pixelFont, 88, UiGold, TextAnchor.MiddleCenter,
                 center, new Vector2(0f, 340f), new Vector2(1800f, 120f)).GetComponent<Shadow>().effectDistance = new Vector2(8f, -8f);
         AddText(root, "Subtitulo", "Colete os cristais e fuja da estação antes que o oxigênio acabe!", bodyFont, 48, UiCyan,
                 TextAnchor.MiddleCenter, center, new Vector2(0f, 250f), new Vector2(1600f, 60f));
 
+        Text best = AddText(root, "Recorde", "", titleFont, 44, UiMuted, TextAnchor.MiddleCenter,
+                            new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(1600f, 40f));
+        AddText(root, "Rodape", "Projeto Intro Unity · Yuri Henrique", bodyFont, 32, new Color(1f, 1f, 1f, 0.5f), TextAnchor.LowerRight,
+                new Vector2(1f, 0f), new Vector2(-24f, 16f), new Vector2(800f, 40f), new Vector2(1f, 0f));
+
         // ---------- painel principal
         RectTransform mainPanel = Stretch(NewUI("PainelPrincipal", root));
         Vector2 buttonSize = new Vector2(560f, 84f);
         Button play = AddButton(mainPanel, "BotaoJogar", "JOGAR", new Vector2(0f, 80f), buttonSize, 60);
-        Button quit = AddButton(mainPanel, "BotaoSair", "SAIR", new Vector2(0f, -24f), buttonSize, 52);
+        Button howTo = AddButton(mainPanel, "BotaoComoJogar", "COMO JOGAR", new Vector2(0f, -24f), buttonSize, 52);
+        Button credits = AddButton(mainPanel, "BotaoCreditos", "CRÉDITOS", new Vector2(0f, -128f), buttonSize, 52);
+        Button quit = AddButton(mainPanel, "BotaoSair", "SAIR", new Vector2(0f, -232f), buttonSize, 52);
         mainPanel.gameObject.AddComponent<MenuFocus>().firstSelected = play.gameObject;
 
+        // ---------- como jogar
+        var (howRoot, howWindow) = AddPanel(root, "PainelComoJogar", "COMO JOGAR", UiGold, new Vector2(1500f, 900f));
+        AddText(howWindow, "Texto",
+            "<color=#5ad1ff>OBJETIVO</color>\n" +
+            "Você é um astronauta preso numa estação espacial. Colete os 12 cristais de energia para\n" +
+            "liberar a cápsula de fuga (canto superior direito) e entre nela antes que o oxigênio acabe!\n\n" +
+            "<color=#5ad1ff>CONTROLES</color>          <color=#ffd23f>TECLADO</color>              <color=#ffd23f>CONTROLE XBOX</color>\n" +
+            "Mover              WASD / Setas         Analógico esquerdo / D-pad\n" +
+            "Dash               Espaço / Shift       A / RT\n" +
+            "Pausar             Esc / P              Start\n" +
+            "Menus              Setas + Enter        D-pad + A  (B volta)\n\n" +
+            "<color=#5ad1ff>ITENS E PERIGOS</color>\n" +
+            "Cristal: +100 pontos e +3s de oxigênio     Tanque de O2: +10s de oxigênio\n" +
+            "Drones patrulham rotas fixas · Alienígenas perseguem você quando te enxergam\n" +
+            "Minas ficam paradas · Lasers ligam e desligam: observe o ritmo e passe na hora certa!\n" +
+            "O dash gasta stamina e te deixa invulnerável por um instante. Você tem 3 vidas.",
+            bodyFont, 38, UiText, TextAnchor.UpperLeft, new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(1380f, 640f), new Vector2(0.5f, 1f));
+        Button howBack = AddButton(howWindow, "BotaoVoltar", "VOLTAR", new Vector2(0f, -370f), new Vector2(420f, 76f));
+        howRoot.AddComponent<MenuFocus>().firstSelected = howBack.gameObject;
+
+        // ---------- créditos
+        var (creditsRoot, creditsWindow) = AddPanel(root, "PainelCreditos", "CRÉDITOS", UiGold, new Vector2(1400f, 820f));
+        AddText(creditsWindow, "Texto",
+            "<color=#ffd23f>COLETOR ESTELAR</color>\n" +
+            "Projeto Individual · Introdução ao Unity\n\n" +
+            "Desenvolvimento: Yuri Henrique\n" +
+            "Base: tutorial \"Introdução Rápida\" da disciplina de Jogos Digitais\n\n" +
+            "Sprites (pixel art), músicas e efeitos sonoros gerados por código\n" +
+            "pelo autor (Tools/generate_assets.py)\n\n" +
+            "Fontes: Press Start 2P (CodeMan38) e VT323 (Peter Hull)\n" +
+            "SIL Open Font License 1.1\n\n" +
+            "Feito com Unity 6.3 LTS · URP 2D · Input System",
+            bodyFont, 40, UiText, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(1300f, 560f), new Vector2(0.5f, 1f));
+        Button creditsBack = AddButton(creditsWindow, "BotaoVoltar", "VOLTAR", new Vector2(0f, -330f), new Vector2(420f, 76f));
+        creditsRoot.AddComponent<MenuFocus>().firstSelected = creditsBack.gameObject;
+
         var menu = canvas.gameObject.AddComponent<MainMenu>();
+        menu.mainPanel = mainPanel.gameObject;
+        menu.howToPanel = howRoot;
+        menu.creditsPanel = creditsRoot;
         menu.playButton = play;
+        menu.howToButton = howTo;
+        menu.creditsButton = credits;
         menu.quitButton = quit;
+        menu.howToBackButton = howBack;
+        menu.creditsBackButton = creditsBack;
+        menu.bestText = best;
+        howRoot.SetActive(false);
+        creditsRoot.SetActive(false);
 
         CreateEventSystem();
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), MenuScenePath);
         log.AppendLine("Cena do menu salva.");
+    }
+
+    static void AddDecoration(Transform parent, Sprite sprite, Vector2 position, float size, float bob, float rotate, float phase)
+    {
+        Image image = AddImage(parent, "Decoracao", sprite, Color.white, new Vector2(0.5f, 0.5f), position, new Vector2(size, size));
+        image.preserveAspect = true;
+        var floater = image.gameObject.AddComponent<Floater>();
+        floater.bobAmplitude = bob;
+        floater.rotateSpeed = rotate;
+        floater.phase = phase;
     }
 
     // ------------------------------------------------------------------ projeto
