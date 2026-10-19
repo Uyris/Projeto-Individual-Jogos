@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Interface durante a partida: pontuação, cronômetro, cristais, oxigênio
+/// Interface durante a partida: pontuação, cronômetro, cristais, vida, oxigênio
 /// e os painéis de pausa, derrota e vitória.
 /// </summary>
 public class HUD : MonoBehaviour
@@ -11,6 +11,7 @@ public class HUD : MonoBehaviour
     public Text scoreText;
     public Text timeText;
     public Text crystalText;
+    public Image[] hearts;
     public RectTransform oxygenFill;
     public Image oxygenFillImage;
     public Text oxygenText;
@@ -35,6 +36,8 @@ public class HUD : MonoBehaviour
 
     static readonly Color OxygenColor = new Color(0.3f, 0.85f, 1f);
     static readonly Color OxygenLowColor = new Color(1f, 0.3f, 0.3f);
+    static readonly Color HeartColor = new Color(0.91f, 0.21f, 0.29f);
+    static readonly Color HeartEmptyColor = new Color(0.23f, 0.25f, 0.32f);
 
     void Start()
     {
@@ -56,11 +59,15 @@ public class HUD : MonoBehaviour
     {
         GameManager gm = GameManager.Instance;
         if (gm == null) return;
+        PlayerController player = gm.player;
 
         scoreText.text = gm.Score.ToString("00000");
 
         timeText.text = GameManager.FormatTime(gm.ElapsedTime);
         crystalText.text = $"{gm.CrystalsCollected}/{gm.TotalCrystals}";
+
+        for (int i = 0; i < hearts.Length; i++)
+            hearts[i].color = i < player.Health ? HeartColor : HeartEmptyColor;
 
         bool low = gm.Oxygen <= gm.lowOxygen;
         SetFill(oxygenFill, gm.Oxygen / gm.maxOxygen);
@@ -90,11 +97,12 @@ public class HUD : MonoBehaviour
         gameOverPanel.SetActive(true);
     }
 
-    public void ShowVictory(float time, int score, int oxygenBonus, bool newRecord, float bestTime)
+    public void ShowVictory(float time, int score, int oxygenBonus, int healthBonus, bool newRecord, float bestTime)
     {
         victoryStatsText.text =
             $"TEMPO FINAL: {GameManager.FormatTime(time)}\n" +
             $"BÔNUS DE OXIGÊNIO: +{oxygenBonus}\n" +
+            $"BÔNUS DE VIDA: +{healthBonus}\n" +
             $"PONTUAÇÃO FINAL: {score:00000}";
         victoryRecordText.text = newRecord
             ? "NOVO RECORDE DE TEMPO!"

@@ -2,8 +2,8 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Astronauta controlado pelo jogador: movimento com Rigidbody2D (corrigindo a diagonal)
-/// e coleta de itens por trigger.
+/// Astronauta controlado pelo jogador: movimento com Rigidbody2D (corrigindo a diagonal),
+/// vida, coleta de itens por trigger e dano ao tocar inimigos.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
@@ -12,17 +12,29 @@ public class PlayerController : MonoBehaviour
     public float speed = 6f;
     public float acceleration = 50f;
 
+    [Header("Vida")]
+    public int maxHealth = 3;
+    public float invulnerableTime = 1.5f;
+    public float knockback = 10f;
+
     [Header("Referências")]
     public Transform visual;
+    public SpriteRenderer body;
     public AudioSource audioSource;
     public AudioClip collectClip;
 
+    public int Health { get; private set; }
+
     Rigidbody2D rb;
     Vector2 movement;
+    Vector2 facing = Vector2.right;
+    float invulnerableTimer;
+    float knockbackTimer;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        Health = maxHealth;
     }
 
     void Update()
@@ -36,6 +48,13 @@ public class PlayerController : MonoBehaviour
         // Tutorial (Movimentação Diagonal): o vetor nunca passa de tamanho 1, então andar na
         // diagonal não fica mais rápido.
         movement = Vector2.ClampMagnitude(GameInput.Move.ReadValue<Vector2>(), 1f);
+        if (movement.sqrMagnitude > 0.01f) facing = movement.normalized;
+
+        if (invulnerableTimer > 0f)
+        {
+            invulnerableTimer -= Time.deltaTime;
+            body.enabled = invulnerableTimer <= 0f || Mathf.Repeat(invulnerableTimer, 0.16f) > 0.08f;
+        }
     }
 
     void FixedUpdate()
@@ -43,6 +62,12 @@ public class PlayerController : MonoBehaviour
         if (!GameManager.IsPlaying)
         {
             rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
+        if (knockbackTimer > 0f)
+        {
+            knockbackTimer -= Time.fixedDeltaTime;
             return;
         }
 
@@ -66,6 +91,31 @@ public class PlayerController : MonoBehaviour
             GameManager.Instance.Collect(item);
             Destroy(other.gameObject);
         }
+        else if (other.CompareTag("Inimigo"))
+        {
+            TakeDamage(other);
+        }
+    }
+
+    void OnTriggerStay2D(Collider2D other)
+    {
+        if (GameManager.IsPlaying && other.CompareTag("Inimigo")) TakeDamage(other);
+    }
+
+    void TakeDamage(Collider2D source)
+    {
+        if (invulnerableTimer > 0f || Health <= 0) return;
+
+        Health--;
+        invulnerableTimer = invulnerableTime;
+
+        Vector2 away = rb.position - source.ClosestPoint(rb.position);
+        if (away.sqrMagnitude < 0.0001f) away = rb.position - (Vector2)source.bounds.center;
+        if (away.sqrMagnitude < 0.0001f) away = -facing;
+        rb.linearVelocity = away.normalized * knockback;
+        knockbackTimer = 0.2f;
+
+        GameManager.Instance.PlayerHurt(Health);
     }
 
     /// <summary>Chamado pelo GameManager na derrota.</summary>
@@ -79,6 +129,7 @@ public class PlayerController : MonoBehaviour
     {
         rb.linearVelocity = Vector2.zero;
         rb.simulated = false;
+        body.enabled = true;
     }
 
     IEnumerator ShrinkRoutine(Vector3 target)

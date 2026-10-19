@@ -22,7 +22,7 @@ public static class GameBuilder
     const string GameScenePath = SceneDir + "Game.unity";
 
     // Arena com 32 x 16 células de 1 unidade.
-    // # parede | C cristal | O oxigênio | P jogador
+    // # parede | C cristal | O oxigênio | M mina | P jogador
     static readonly string[] Map =
     {
         "..C......#..........C.....#.....",
@@ -32,13 +32,13 @@ public static class GameBuilder
         "####..####..#...C......#........",
         "............#..........#....C...",
         ".C..........#..........#........",
-        "............####..######........",
+        ".....M......####..######..M.....",
         "..........................######",
         "######..###.....C...............",
         "........#...######..####........",
         "..P.....#..............#........",
-        "........#..............#..C..O..",
-        "..C.........C.....######........",
+        "........#....M.........#..C..O..",
+        "..C.........C.....######.....M..",
         "........#..........C............",
         "...O....#..C.................C..",
     };
@@ -54,7 +54,7 @@ public static class GameBuilder
     static Font titleFont;
     static PhysicsMaterial2D noFriction;
 
-    static GameObject playerPrefab, crystalPrefab, oxygenPrefab;
+    static GameObject playerPrefab, crystalPrefab, oxygenPrefab, dronePrefab, minePrefab;
 
     [MenuItem("Coletor Estelar/Reconstruir Jogo")]
     public static void BuildFromMenu()
@@ -67,7 +67,7 @@ public static class GameBuilder
         log = new StringBuilder();
         EnsureFolder(PrefabDir);
         EnsureFolder(MaterialDir);
-        EnsureTags("Coletavel");
+        EnsureTags("Coletavel", "Inimigo");
         ConfigureImporters();
 
         // por enquanto a fonte padrão do Unity
@@ -235,6 +235,7 @@ public static class GameBuilder
 
         var pc = player.AddComponent<PlayerController>();
         pc.visual = visual.transform;
+        pc.body = visual.GetComponent<SpriteRenderer>();
         pc.audioSource = audio;
         pc.collectClip = Sfx("collect");
         playerPrefab = SavePrefab(player);
@@ -265,6 +266,26 @@ public static class GameBuilder
         tc.oxygen = 10f;
         tc.visual = tankVisual.transform;
         oxygenPrefab = SavePrefab(tank);
+
+        // ---------- Drone de patrulha
+        var drone = new GameObject("Drone") { tag = "Inimigo" };
+        var drb = drone.AddComponent<Rigidbody2D>();
+        drb.bodyType = RigidbodyType2D.Kinematic;
+        drb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        var dcol = drone.AddComponent<CircleCollider2D>();
+        dcol.isTrigger = true;
+        dcol.radius = 0.4f;
+        Shape("Visual", drone.transform, "circle", new Color(1f, 0.45f, 0.2f), 10, 0.8f);
+        drone.AddComponent<PatrolEnemy>();
+        dronePrefab = SavePrefab(drone);
+
+        // ---------- Mina (inimigo parado)
+        var mine = new GameObject("Mina") { tag = "Inimigo" };
+        var mcol = mine.AddComponent<CircleCollider2D>();
+        mcol.isTrigger = true;
+        mcol.radius = 0.36f;
+        Shape("Visual", mine.transform, "circle", new Color(0.75f, 0.2f, 0.55f), 8, 0.75f);
+        minePrefab = SavePrefab(mine);
 
         log.AppendLine("Prefabs criados.");
     }
@@ -299,6 +320,7 @@ public static class GameBuilder
 
         // ---------- Objetos do mapa
         Transform items = new GameObject("Coletaveis").transform;
+        Transform enemies = new GameObject("Inimigos").transform;
         GameObject playerGO = null;
 
         for (int r = 0; r < Map.Length; r++)
@@ -310,10 +332,18 @@ public static class GameBuilder
                 {
                     case 'C': Place(crystalPrefab, p, items); break;
                     case 'O': Place(oxygenPrefab, p, items); break;
+                    case 'M': Place(minePrefab, p, enemies); break;
                     case 'P': playerGO = Place(playerPrefab, p, null); break;
                 }
             }
         }
+
+        // drones com rotas pré-determinadas
+        CreateDrone(enemies, 3f, true, new Vector2(-15f, 5.5f), new Vector2(-7.6f, 5.5f));
+        CreateDrone(enemies, 3.2f, true, new Vector2(-5f, 6.5f), new Vector2(-5f, 0f));
+        CreateDrone(enemies, 3.5f, true, new Vector2(-15f, -1f), new Vector2(9f, -1f));
+        CreateDrone(enemies, 3f, true, new Vector2(-6.5f, -7f), new Vector2(8f, -7f));
+        CreateDrone(enemies, 2.8f, false, new Vector2(9f, 3f), new Vector2(15f, 3f), new Vector2(15f, 1f), new Vector2(9f, 1f));
 
         // ---------- Gerenciadores e HUD
         HUD hud = BuildHud();
@@ -378,6 +408,15 @@ public static class GameBuilder
             }
         }
         return count;
+    }
+
+    static void CreateDrone(Transform parent, float speed, bool pingPong, params Vector2[] waypoints)
+    {
+        GameObject drone = Place(dronePrefab, waypoints[0], parent);
+        var patrol = drone.GetComponent<PatrolEnemy>();
+        patrol.waypoints = waypoints;
+        patrol.speed = speed;
+        patrol.pingPong = pingPong;
     }
 
     static Camera CreateCamera(Vector3 position, float size)
@@ -553,6 +592,11 @@ public static class GameBuilder
                 center, new Vector2(0f, 26f), new Vector2(300f, 30f));
         hud.timeText = AddText(b, "Tempo", "00:00.00", pixelFont, 40, UiText, TextAnchor.MiddleCenter,
                                center, new Vector2(16f, -14f), new Vector2(380f, 56f));
+
+        hud.hearts = new Image[3];
+        for (int i = 0; i < 3; i++)
+            hud.hearts[i] = AddImage(b, "Coracao" + i, Spr("circle"), Color.white, right,
+                                     new Vector2(-188f + i * 64f, 0f), new Vector2(44f, 44f));
 
         AddText(b, "RotuloOxigenio", "O2", pixelFont, 16, UiMuted, TextAnchor.MiddleRight,
                 right, new Vector2(-626f, 20f), new Vector2(80f, 34f));

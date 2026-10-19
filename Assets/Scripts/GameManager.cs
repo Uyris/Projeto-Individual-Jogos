@@ -25,6 +25,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Bônus no final")]
     public int oxygenBonusPerSecond = 10;
+    public int lifeBonus = 250;
 
     [Header("Referências")]
     public PlayerController player;
@@ -95,12 +96,18 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void PlayerHurt(int health)
+    {
+        if (health <= 0) Lose("VOCÊ FOI ATINGIDO DEMAIS!");
+    }
+
     void Win()
     {
         CurrentState = State.Won;
 
         int oxygenBonus = Mathf.CeilToInt(Oxygen) * oxygenBonusPerSecond;
-        Score += oxygenBonus;
+        int healthBonus = player.Health * lifeBonus;
+        Score += oxygenBonus + healthBonus;
 
         float bestTime = PlayerPrefs.GetFloat(BestTimeKey, 0f);
         bool newRecord = bestTime <= 0f || ElapsedTime < bestTime;
@@ -111,7 +118,7 @@ public class GameManager : MonoBehaviour
 
         float time = ElapsedTime;
         int score = Score;
-        StartCoroutine(EndRoutine(() => hud.ShowVictory(time, score, oxygenBonus, newRecord, bestTime)));
+        StartCoroutine(EndRoutine(() => hud.ShowVictory(time, score, oxygenBonus, healthBonus, newRecord, bestTime)));
     }
 
     void Lose(string reason)
