@@ -102,7 +102,7 @@ GameObject:
   - component: {fileID: 9064797523861827283}
   - component: {fileID: 584476677179129346}
   - component: {fileID: 7682533181452010959}
-  - component: {fileID: 7908932663575979559}
+  - component: {fileID: 7799496464608354333}
   m_Layer: 0
   m_Name: Cristal
   m_TagString: Coletavel
@@ -193,7 +193,7 @@ MonoBehaviour:
   oxygen: 3
   fxColor: {r: 0.5, g: 0.95, b: 1, a: 1}
   visual: {fileID: 5296286955804902473}
---- !u!114 &7908932663575979559
+--- !u!114 &7799496464608354333
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: GameVolumeProfile
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
   components:
-  - {fileID: 5740005258220488275}
-  - {fileID: 930390869775647644}
---- !u!114 &930390869775647644
+  - {fileID: 4297455772826859345}
+  - {fileID: 459720120083703257}
+--- !u!114 &459720120083703257
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -43,7 +43,7 @@ MonoBehaviour:
   rounded:
     m_OverrideState: 1
     m_Value: 0
---- !u!114 &5740005258220488275
+--- !u!114 &4297455772826859345
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}

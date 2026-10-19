@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8679316473929041742}
   - component: {fileID: 7256554054247274613}
-  - component: {fileID: 4081457983753245482}
+  - component: {fileID: 5279561121823435855}
   m_Layer: 0
   m_Name: Mina
   m_TagString: Inimigo
@@ -70,7 +70,7 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.36
---- !u!114 &4081457983753245482
+--- !u!114 &5279561121823435855
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -132,7 +132,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1655029219201336075}
   - component: {fileID: 1697721257926343134}
-  - component: {fileID: 5255951357139490916}
+  - component: {fileID: 1317764077471645995}
   m_Layer: 0
   m_Name: Visual
   m_TagString: Untagged
@@ -214,7 +214,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &5255951357139490916
+--- !u!114 &1317764077471645995
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

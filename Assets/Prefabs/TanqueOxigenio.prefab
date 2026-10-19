@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 728992586056034772}
   - component: {fileID: 4080746411350904210}
   - component: {fileID: 7947367738670571789}
-  - component: {fileID: 1554745623591094175}
+  - component: {fileID: 5154024777698929285}
   m_Layer: 0
   m_Name: TanqueOxigenio
   m_TagString: Coletavel
@@ -98,7 +98,7 @@ MonoBehaviour:
   oxygen: 10
   fxColor: {r: 0.4, g: 1, b: 0.55, a: 1}
   visual: {fileID: 126493255437007885}
---- !u!114 &1554745623591094175
+--- !u!114 &5154024777698929285
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

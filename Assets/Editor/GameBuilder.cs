@@ -1082,11 +1082,36 @@ public static class GameBuilder
 
     static void ConfigureProject()
     {
+        PlayerSettings.productName = "Coletor Estelar";
+        PlayerSettings.companyName = "Yuri Henrique";
+        PlayerSettings.defaultWebScreenWidth = 1280;
+        PlayerSettings.defaultWebScreenHeight = 720;
+        PlayerSettings.runInBackground = true;
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+        PlayerSettings.WebGL.decompressionFallback = true;
+        PlayerSettings.WebGL.dataCaching = true;
+
         EditorBuildSettings.scenes = new[]
         {
             new EditorBuildSettingsScene(MenuScenePath, true),
             new EditorBuildSettingsScene(GameScenePath, true),
         };
-        log.AppendLine("Build Settings atualizados.");
+        log.AppendLine("Configurações do projeto e Build Settings atualizados.");
+    }
+
+    // ------------------------------------------------------------------ build
+
+    [MenuItem("Coletor Estelar/Gerar Build WebGL")]
+    public static void BuildWebGL()
+    {
+        var options = new BuildPlayerOptions
+        {
+            scenes = new[] { MenuScenePath, GameScenePath },
+            locationPathName = "Builds/WebGL",
+            target = BuildTarget.WebGL,
+            options = BuildOptions.None,
+        };
+        var report = BuildPipeline.BuildPlayer(options);
+        Debug.Log($"Build WebGL: {report.summary.result} | {report.summary.totalSize / (1024 * 1024f):0.0} MB | {report.summary.totalTime}");
     }
 }

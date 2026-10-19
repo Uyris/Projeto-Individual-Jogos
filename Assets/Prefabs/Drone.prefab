@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &627532507925533758
+--- !u!1 &1411065794178161618
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,8 +8,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1994502574325203201}
-  - component: {fileID: 386221248824593948}
+  - component: {fileID: 2696038971467521398}
+  - component: {fileID: 3577787758403238383}
   m_Layer: 0
   m_Name: Sombra
   m_TagString: Untagged
@@ -17,13 +17,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1994502574325203201
+--- !u!4 &2696038971467521398
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 627532507925533758}
+  m_GameObject: {fileID: 1411065794178161618}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.08, y: -0.14, z: 0}
@@ -32,14 +32,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2930418922206331894}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &386221248824593948
+--- !u!212 &3577787758403238383
 SpriteRenderer:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 627532507925533758}
+  m_GameObject: {fileID: 1411065794178161618}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -103,7 +103,7 @@ GameObject:
   - component: {fileID: 4789441219675024324}
   - component: {fileID: 1441706025113778232}
   - component: {fileID: 4026436544938967623}
-  - component: {fileID: 275863731565654805}
+  - component: {fileID: 8689888800214727489}
   m_Layer: 0
   m_Name: Drone
   m_TagString: Inimigo
@@ -124,7 +124,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1994502574325203201}
+  - {fileID: 2696038971467521398}
   - {fileID: 3264429380811084734}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -207,7 +207,7 @@ MonoBehaviour:
   speed: 3
   waitTime: 0.25
   pingPong: 1
---- !u!114 &275863731565654805
+--- !u!114 &8689888800214727489
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -269,7 +269,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3264429380811084734}
   - component: {fileID: 8753126922926115219}
-  - component: {fileID: 4649644260021337}
+  - component: {fileID: 3733201151137399118}
   m_Layer: 0
   m_Name: Visual
   m_TagString: Untagged
@@ -351,7 +351,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &4649644260021337
+--- !u!114 &3733201151137399118
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
