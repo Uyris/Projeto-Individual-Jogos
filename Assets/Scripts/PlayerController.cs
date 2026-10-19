@@ -57,7 +57,7 @@ public class PlayerController : MonoBehaviour
         }
 
         // Tutorial (Movimentação Diagonal): o vetor nunca passa de tamanho 1, então andar na
-        // diagonal não fica mais rápido.
+        // diagonal não fica mais rápido. ClampMagnitude mantém a sensibilidade do analógico.
         movement = Vector2.ClampMagnitude(GameInput.Move.ReadValue<Vector2>(), 1f);
         if (movement.sqrMagnitude > 0.01f) facing = movement.normalized;
 

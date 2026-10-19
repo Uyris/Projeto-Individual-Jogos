@@ -704,11 +704,12 @@ public static class GameBuilder
         // ---------- pausa
         var (pauseRoot, pauseWindow) = AddPanel(root, "PainelPausa", "PAUSADO", Color.white, new Vector2(900f, 680f));
         AddText(pauseWindow, "Dicas",
-                "<color=#ffd23f>MOVER</color>  WASD / SETAS\n<color=#ffd23f>DASH</color>   ESPAÇO / SHIFT\n<color=#ffd23f>PAUSA</color>  ESC / P",
+                "<color=#ffd23f>MOVER</color>  WASD / SETAS / ANALÓGICO\n<color=#ffd23f>DASH</color>   ESPAÇO / SHIFT / A / RT\n<color=#ffd23f>PAUSA</color>  ESC / P / START",
                 bodyFont, 40, UiText, TextAnchor.MiddleCenter, center, new Vector2(0f, 130f), new Vector2(820f, 160f));
         hud.resumeButton = AddButton(pauseWindow, "BotaoContinuar", "CONTINUAR", new Vector2(0f, -40f), new Vector2(520f, 76f));
         hud.pauseRestartButton = AddButton(pauseWindow, "BotaoReiniciar", "REINICIAR", new Vector2(0f, -136f), new Vector2(520f, 76f));
         hud.pauseMenuButton = AddButton(pauseWindow, "BotaoMenu", "MENU PRINCIPAL", new Vector2(0f, -232f), new Vector2(520f, 76f));
+        pauseRoot.AddComponent<MenuFocus>().firstSelected = hud.resumeButton.gameObject;
         hud.pausePanel = pauseRoot;
 
         // ---------- derrota
@@ -720,6 +721,7 @@ public static class GameBuilder
         hud.gameOverStatsText.lineSpacing = 1f;
         hud.gameOverRestartButton = AddButton(overWindow, "BotaoTentar", "TENTAR DE NOVO", new Vector2(0f, -150f), new Vector2(520f, 76f));
         hud.gameOverMenuButton = AddButton(overWindow, "BotaoMenu", "MENU PRINCIPAL", new Vector2(0f, -246f), new Vector2(520f, 76f));
+        overRoot.AddComponent<MenuFocus>().firstSelected = hud.gameOverRestartButton.gameObject;
         hud.gameOverPanel = overRoot;
 
         // ---------- vitória
@@ -731,6 +733,7 @@ public static class GameBuilder
                                         center, new Vector2(0f, -40f), new Vector2(820f, 50f));
         hud.victoryRestartButton = AddButton(winWindow, "BotaoJogar", "JOGAR DE NOVO", new Vector2(0f, -150f), new Vector2(520f, 76f));
         hud.victoryMenuButton = AddButton(winWindow, "BotaoMenu", "MENU PRINCIPAL", new Vector2(0f, -246f), new Vector2(520f, 76f));
+        winRoot.AddComponent<MenuFocus>().firstSelected = hud.victoryRestartButton.gameObject;
         hud.victoryPanel = winRoot;
 
         return hud;
@@ -757,6 +760,7 @@ public static class GameBuilder
         Vector2 buttonSize = new Vector2(560f, 84f);
         Button play = AddButton(mainPanel, "BotaoJogar", "JOGAR", new Vector2(0f, 80f), buttonSize, 60);
         Button quit = AddButton(mainPanel, "BotaoSair", "SAIR", new Vector2(0f, -24f), buttonSize, 52);
+        mainPanel.gameObject.AddComponent<MenuFocus>().firstSelected = play.gameObject;
 
         var menu = canvas.gameObject.AddComponent<MainMenu>();
         menu.playButton = play;

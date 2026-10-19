@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// Ações de entrada do jogo criadas por código com o Input System.
-/// Por enquanto funciona só com teclado (WASD e setas).
+/// Funciona com teclado e com controle (Xbox / gamepad genérico).
 /// </summary>
 public static class GameInput
 {
@@ -36,14 +36,21 @@ public static class GameInput
         move.AddCompositeBinding("2DVector")
             .With("Up", "<Keyboard>/upArrow").With("Down", "<Keyboard>/downArrow")
             .With("Left", "<Keyboard>/leftArrow").With("Right", "<Keyboard>/rightArrow");
+        move.AddBinding("<Gamepad>/leftStick");
+        move.AddBinding("<Gamepad>/dpad");
+        move.AddBinding("<Joystick>/stick");
 
         dash = new InputAction("Dash", InputActionType.Button);
         dash.AddBinding("<Keyboard>/space");
         dash.AddBinding("<Keyboard>/leftShift");
+        dash.AddBinding("<Gamepad>/buttonSouth");
+        dash.AddBinding("<Gamepad>/rightTrigger");
+        dash.AddBinding("<Joystick>/trigger");
 
         pause = new InputAction("Pause", InputActionType.Button);
         pause.AddBinding("<Keyboard>/escape");
         pause.AddBinding("<Keyboard>/p");
+        pause.AddBinding("<Gamepad>/start");
 
         move.Enable();
         dash.Enable();
