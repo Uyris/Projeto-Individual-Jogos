@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEditor;
@@ -22,7 +23,7 @@ public static class GameBuilder
     const string GameScenePath = SceneDir + "Game.unity";
 
     // Arena com 32 x 16 células de 1 unidade.
-    // # parede | C cristal | O oxigênio | M mina | P jogador
+    // # parede | C cristal | O oxigênio | M mina | A alienígena | P jogador
     static readonly string[] Map =
     {
         "..C......#..........C.....#.....",
@@ -30,12 +31,12 @@ public static class GameBuilder
         "...O.....#..######..####..#.....",
         ".........#..#..........#..##..##",
         "####..####..#...C......#........",
-        "............#..........#....C...",
+        "............#.....A....#....C...",
         ".C..........#..........#........",
         ".....M......####..######..M.....",
         "..........................######",
         "######..###.....C...............",
-        "........#...######..####........",
+        "........#...######..####..A.....",
         "..P.....#..............#........",
         "........#....M.........#..C..O..",
         "..C.........C.....######.....M..",
@@ -54,7 +55,7 @@ public static class GameBuilder
     static Font titleFont;
     static PhysicsMaterial2D noFriction;
 
-    static GameObject playerPrefab, crystalPrefab, oxygenPrefab, dronePrefab, minePrefab;
+    static GameObject playerPrefab, crystalPrefab, oxygenPrefab, dronePrefab, alienPrefab, minePrefab;
 
     [MenuItem("Coletor Estelar/Reconstruir Jogo")]
     public static void BuildFromMenu()
@@ -67,7 +68,7 @@ public static class GameBuilder
         log = new StringBuilder();
         EnsureFolder(PrefabDir);
         EnsureFolder(MaterialDir);
-        EnsureTags("Coletavel", "Inimigo");
+        EnsureTags("Coletavel", "Inimigo", "Parede");
         ConfigureImporters();
 
         // por enquanto a fonte padrão do Unity
@@ -279,6 +280,26 @@ public static class GameBuilder
         drone.AddComponent<PatrolEnemy>();
         dronePrefab = SavePrefab(drone);
 
+        // ---------- Alienígena perseguidor
+        var alien = new GameObject("Alienigena");
+        var arb = alien.AddComponent<Rigidbody2D>();
+        arb.gravityScale = 0f;
+        arb.freezeRotation = true;
+        arb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        arb.sharedMaterial = noFriction;
+        var bodyCollider = alien.AddComponent<CircleCollider2D>();
+        bodyCollider.radius = 0.42f;
+        var hitbox = new GameObject("Hitbox") { tag = "Inimigo" };
+        hitbox.transform.SetParent(alien.transform, false);
+        var hcol = hitbox.AddComponent<CircleCollider2D>();
+        hcol.isTrigger = true;
+        hcol.radius = 0.4f;
+        GameObject alienVisual = Shape("Visual", alien.transform, "circle", new Color(0.4f, 0.9f, 0.35f), 11, 0.85f);
+        var chaser = alien.AddComponent<ChaserEnemy>();
+        chaser.bodyCollider = bodyCollider;
+        chaser.body = alienVisual.GetComponent<SpriteRenderer>();
+        alienPrefab = SavePrefab(alien);
+
         // ---------- Mina (inimigo parado)
         var mine = new GameObject("Mina") { tag = "Inimigo" };
         var mcol = mine.AddComponent<CircleCollider2D>();
@@ -322,6 +343,12 @@ public static class GameBuilder
         Transform items = new GameObject("Coletaveis").transform;
         Transform enemies = new GameObject("Inimigos").transform;
         GameObject playerGO = null;
+        var alienPatrols = new List<Vector2[]>
+        {
+            new[] { new Vector2(-1.5f, 3.5f), new Vector2(5.5f, 3.5f), new Vector2(5.5f, 1.5f), new Vector2(-1.5f, 1.5f) },
+            new[] { new Vector2(9.5f, -3f), new Vector2(14.5f, -3f), new Vector2(14.5f, -7f), new Vector2(9.5f, -7f) },
+        };
+        int alienIndex = 0;
 
         for (int r = 0; r < Map.Length; r++)
         {
@@ -334,6 +361,10 @@ public static class GameBuilder
                     case 'O': Place(oxygenPrefab, p, items); break;
                     case 'M': Place(minePrefab, p, enemies); break;
                     case 'P': playerGO = Place(playerPrefab, p, null); break;
+                    case 'A':
+                        GameObject alien = Place(alienPrefab, p, enemies);
+                        alien.GetComponent<ChaserEnemy>().patrolPoints = alienPatrols[alienIndex++ % alienPatrols.Count];
+                        break;
                 }
             }
         }
@@ -369,6 +400,7 @@ public static class GameBuilder
     static void CreateWall(Transform parent, float left, float top, float width, float height)
     {
         GameObject wall = Shape("Parede", parent, "square", new Color(0.27f, 0.33f, 0.48f), 0);
+        wall.tag = "Parede";
         wall.transform.position = new Vector3(left + width * 0.5f, top - height * 0.5f, 0f);
         var sr = wall.GetComponent<SpriteRenderer>();
         sr.drawMode = SpriteDrawMode.Tiled;

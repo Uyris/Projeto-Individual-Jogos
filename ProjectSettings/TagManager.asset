@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Coletavel
   - Inimigo
+  - Parede
   layers:
   - Default
   - TransparentFX
