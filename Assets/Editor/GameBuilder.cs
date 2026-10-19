@@ -3,10 +3,12 @@ using System.Text;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 /// <summary>
-/// Monta os prefabs, a cena do jogo e as configurações do projeto a partir
+/// Monta os prefabs, as cenas (MainMenu e Game) e as configurações do projeto a partir
 /// dos assets gerados. Menu do editor: "Coletor Estelar > Reconstruir Jogo".
 /// </summary>
 public static class GameBuilder
@@ -16,6 +18,7 @@ public static class GameBuilder
     const string PrefabDir = "Assets/Prefabs/";
     const string MaterialDir = "Assets/Materials/";
     const string SceneDir = "Assets/Scenes/";
+    const string MenuScenePath = SceneDir + "MainMenu.unity";
     const string GameScenePath = SceneDir + "Game.unity";
 
     static readonly Color UiText = Color.white;
@@ -53,10 +56,11 @@ public static class GameBuilder
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         CreatePrefabs();
         BuildGameScene();
+        BuildMenuScene();
         ConfigureProject();
 
         AssetDatabase.SaveAssets();
-        EditorSceneManager.OpenScene(GameScenePath);
+        EditorSceneManager.OpenScene(MenuScenePath);
         log.AppendLine("Pronto!");
         return log.ToString();
     }
@@ -129,6 +133,8 @@ public static class GameBuilder
 
     static Sprite Spr(string name) => Load<Sprite>(ArtDir + "Sprites/" + name + ".png");
     static AudioClip Sfx(string name) => Load<AudioClip>(AudioDir + "SFX/" + name + ".wav");
+    // sprites padrão da interface do Unity, até a interface ganhar arte própria
+    static Sprite DefaultUi(string file) => AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/" + file);
 
     static T Load<T>(string path) where T : Object
     {
@@ -289,6 +295,12 @@ public static class GameBuilder
         return cam;
     }
 
+    static void CreateEventSystem()
+    {
+        var go = new GameObject("EventSystem", typeof(EventSystem));
+        go.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();
+    }
+
     // ------------------------------------------------------------------ UI
 
     static RectTransform NewUI(string name, Transform parent)
@@ -305,6 +317,15 @@ public static class GameBuilder
         rt.pivot = pivot ?? new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = position;
         rt.sizeDelta = size;
+        return rt;
+    }
+
+    static RectTransform Stretch(RectTransform rt, float inset = 0f)
+    {
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(inset, inset);
+        rt.offsetMax = new Vector2(-inset, -inset);
         return rt;
     }
 
@@ -331,6 +352,38 @@ public static class GameBuilder
         return text;
     }
 
+    static Image AddImage(Transform parent, string name, Sprite sprite, Color color, Vector2 anchor, Vector2 position,
+                          Vector2 size, bool sliced = false, Vector2? pivot = null)
+    {
+        RectTransform rt = Layout(NewUI(name, parent), anchor, position, size, pivot);
+        var image = rt.gameObject.AddComponent<Image>();
+        image.sprite = sprite;
+        image.color = color;
+        image.raycastTarget = false;
+        if (sliced) image.type = Image.Type.Sliced;
+        return image;
+    }
+
+    static Button AddButton(Transform parent, string name, string label, Vector2 position, Vector2 size, int fontSize = 48)
+    {
+        Image image = AddImage(parent, name, DefaultUi("UISprite.psd"), Color.white, new Vector2(0.5f, 0.5f), position, size, true);
+        image.raycastTarget = true;
+        var button = image.gameObject.AddComponent<Button>();
+        ColorBlock colors = button.colors;
+        colors.normalColor = new Color(0.2f, 0.3f, 0.55f);
+        colors.highlightedColor = new Color(1f, 0.6f, 0.18f);
+        colors.selectedColor = new Color(1f, 0.6f, 0.18f);
+        colors.pressedColor = new Color(0.8f, 0.42f, 0.1f);
+        colors.disabledColor = new Color(0.3f, 0.3f, 0.35f);
+        colors.colorMultiplier = 1f;
+        colors.fadeDuration = 0.06f;
+        button.colors = colors;
+        Text text = AddText(image.transform, "Texto", label, titleFont, fontSize, Color.white, TextAnchor.MiddleCenter,
+                            new Vector2(0.5f, 0.5f), new Vector2(0f, 3f), size);
+        text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        return button;
+    }
+
     static Canvas CreateCanvas(string name, int order)
     {
         var go = new GameObject(name, typeof(RectTransform));
@@ -347,12 +400,44 @@ public static class GameBuilder
         return canvas;
     }
 
+    // ------------------------------------------------------------------ menu
+
+    static void BuildMenuScene()
+    {
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        CreateCamera(new Vector3(0f, 0f, -10f), 5f);
+
+        Canvas canvas = CreateCanvas("Menu", 0);
+        Transform root = canvas.transform;
+        Vector2 center = new Vector2(0.5f, 0.5f);
+
+        AddText(root, "Titulo", "COLETOR ESTELAR", pixelFont, 88, UiGold, TextAnchor.MiddleCenter,
+                center, new Vector2(0f, 340f), new Vector2(1800f, 120f)).GetComponent<Shadow>().effectDistance = new Vector2(8f, -8f);
+        AddText(root, "Subtitulo", "Colete todos os cristais!", bodyFont, 48, UiCyan,
+                TextAnchor.MiddleCenter, center, new Vector2(0f, 250f), new Vector2(1600f, 60f));
+
+        // ---------- painel principal
+        RectTransform mainPanel = Stretch(NewUI("PainelPrincipal", root));
+        Vector2 buttonSize = new Vector2(560f, 84f);
+        Button play = AddButton(mainPanel, "BotaoJogar", "JOGAR", new Vector2(0f, 80f), buttonSize, 60);
+        Button quit = AddButton(mainPanel, "BotaoSair", "SAIR", new Vector2(0f, -24f), buttonSize, 52);
+
+        var menu = canvas.gameObject.AddComponent<MainMenu>();
+        menu.playButton = play;
+        menu.quitButton = quit;
+
+        CreateEventSystem();
+        EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), MenuScenePath);
+        log.AppendLine("Cena do menu salva.");
+    }
+
     // ------------------------------------------------------------------ projeto
 
     static void ConfigureProject()
     {
         EditorBuildSettings.scenes = new[]
         {
+            new EditorBuildSettingsScene(MenuScenePath, true),
             new EditorBuildSettingsScene(GameScenePath, true),
         };
         log.AppendLine("Build Settings atualizados.");
