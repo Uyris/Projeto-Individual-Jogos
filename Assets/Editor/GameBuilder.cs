@@ -3,6 +3,7 @@ using System.Text;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Monta os prefabs, a cena do jogo e as configurações do projeto a partir
@@ -17,7 +18,15 @@ public static class GameBuilder
     const string SceneDir = "Assets/Scenes/";
     const string GameScenePath = SceneDir + "Game.unity";
 
+    static readonly Color UiText = Color.white;
+    static readonly Color UiMuted = new Color(0.6f, 0.7f, 0.85f);
+    static readonly Color UiGold = new Color(1f, 0.82f, 0.3f);
+    static readonly Color UiCyan = new Color(0.45f, 0.85f, 1f);
+
     static StringBuilder log;
+    static Font pixelFont;
+    static Font bodyFont;
+    static Font titleFont;
     static PhysicsMaterial2D noFriction;
 
     static GameObject playerPrefab, crystalPrefab;
@@ -35,6 +44,9 @@ public static class GameBuilder
         EnsureFolder(MaterialDir);
         EnsureTags("Coletavel");
         ConfigureImporters();
+
+        // por enquanto a fonte padrão do Unity
+        pixelFont = bodyFont = titleFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
         CreateMaterials();
 
@@ -204,6 +216,7 @@ public static class GameBuilder
         poly.SetPath(0, new[] { new Vector2(0f, 0.41f), new Vector2(-0.38f, -0.38f), new Vector2(0.38f, -0.38f) });
         GameObject crystalVisual = Shape("Visual", crystal.transform, "triangle", new Color(1f, 0.85f, 0.2f), 5);
         var cc = crystal.AddComponent<Collectible>();
+        cc.points = 100;
         cc.visual = crystalVisual.transform;
         crystalPrefab = SavePrefab(crystal);
 
@@ -239,6 +252,15 @@ public static class GameBuilder
             Place(crystalPrefab, new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 5f, items);
         }
 
+        // ---------- Gerenciador e mensagem de vitória
+        Canvas canvas = CreateCanvas("Canvas", 10);
+        Text victory = AddText(canvas.transform, "MensagemVitoria", "VOCÊ VENCEU!", titleFont, 120, UiGold, TextAnchor.MiddleCenter,
+                               new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1600f, 200f));
+
+        var managers = new GameObject("GameManager");
+        var gm = managers.AddComponent<GameManager>();
+        gm.victoryText = victory.gameObject;
+
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), GameScenePath);
         log.AppendLine("Cena do jogo salva.");
     }
@@ -265,6 +287,64 @@ public static class GameBuilder
         cam.backgroundColor = new Color32(8, 10, 22, 255);
         go.AddComponent<AudioListener>();
         return cam;
+    }
+
+    // ------------------------------------------------------------------ UI
+
+    static RectTransform NewUI(string name, Transform parent)
+    {
+        var go = new GameObject(name, typeof(RectTransform));
+        go.layer = LayerMask.NameToLayer("UI");
+        go.transform.SetParent(parent, false);
+        return (RectTransform)go.transform;
+    }
+
+    static RectTransform Layout(RectTransform rt, Vector2 anchor, Vector2 position, Vector2 size, Vector2? pivot = null)
+    {
+        rt.anchorMin = rt.anchorMax = anchor;
+        rt.pivot = pivot ?? new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = position;
+        rt.sizeDelta = size;
+        return rt;
+    }
+
+    static Text AddText(Transform parent, string name, string content, Font font, int size, Color color, TextAnchor align,
+                        Vector2 anchor, Vector2 position, Vector2 box, Vector2? pivot = null, bool shadow = true)
+    {
+        RectTransform rt = Layout(NewUI(name, parent), anchor, position, box, pivot);
+        var text = rt.gameObject.AddComponent<Text>();
+        text.font = font;
+        text.fontSize = size;
+        text.color = color;
+        text.alignment = align;
+        text.text = content;
+        text.supportRichText = true;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.raycastTarget = false;
+        if (shadow)
+        {
+            var s = rt.gameObject.AddComponent<Shadow>();
+            s.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            s.effectDistance = new Vector2(size / 8f, -size / 8f);
+        }
+        return text;
+    }
+
+    static Canvas CreateCanvas(string name, int order)
+    {
+        var go = new GameObject(name, typeof(RectTransform));
+        go.layer = LayerMask.NameToLayer("UI");
+        var canvas = go.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = order;
+        var scaler = go.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+        go.AddComponent<GraphicRaycaster>();
+        return canvas;
     }
 
     // ------------------------------------------------------------------ projeto

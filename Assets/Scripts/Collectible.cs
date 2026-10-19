@@ -6,6 +6,7 @@ using UnityEngine;
 /// </summary>
 public class Collectible : MonoBehaviour
 {
+    public int points = 100;
     public Transform visual;
 
     public bool Collected { get; set; }

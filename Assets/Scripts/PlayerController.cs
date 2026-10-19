@@ -25,6 +25,12 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (!GameManager.IsPlaying)
+        {
+            movement = Vector2.zero;
+            return;
+        }
+
         // Tutorial (Movimentação Diagonal): o vetor nunca passa de tamanho 1, então andar na
         // diagonal não fica mais rápido.
         movement = Vector2.ClampMagnitude(GameInput.Move.ReadValue<Vector2>(), 1f);
@@ -32,6 +38,12 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (!GameManager.IsPlaying)
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
+
         // Tutorial (Movimentando o Jogador): a física move o Rigidbody2D no FixedUpdate.
         Vector2 target = movement * speed;
         rb.linearVelocity = Vector2.MoveTowards(rb.linearVelocity, target, acceleration * Time.fixedDeltaTime);
@@ -39,6 +51,8 @@ public class PlayerController : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
+        if (!GameManager.IsPlaying) return;
+
         // Tutorial (Coletáveis): identifica o item pela tag e destrói o objeto.
         if (other.CompareTag("Coletavel"))
         {
@@ -47,6 +61,7 @@ public class PlayerController : MonoBehaviour
 
             item.Collected = true;
             audioSource.PlayOneShot(collectClip);
+            GameManager.Instance.Collect(item);
             Destroy(other.gameObject);
         }
     }
