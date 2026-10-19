@@ -151,6 +151,7 @@ public class GameManager : MonoBehaviour
         CurrentState = State.Lost;
 
         player.Die();
+        CameraController.Shake(0.4f, 0.4f);
 
         StartCoroutine(EndRoutine(() => hud.ShowGameOver(reason, ElapsedTime, Score, CrystalsCollected, TotalCrystals)));
     }

@@ -27,8 +27,11 @@ public class PlayerController : MonoBehaviour
     [Header("Referências")]
     public Transform visual;
     public SpriteRenderer body;
+    public TrailRenderer dashTrail;
     public AudioSource audioSource;
     public AudioClip collectClip;
+    public ParticleSystem collectFx;
+    public ParticleSystem hurtFx;
 
     public int Health { get; private set; }
     public float Stamina { get; private set; }
@@ -46,6 +49,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         Health = maxHealth;
         Stamina = maxStamina;
+        if (dashTrail) dashTrail.emitting = false;
     }
 
     void Update()
@@ -86,6 +90,7 @@ public class PlayerController : MonoBehaviour
         {
             dashTimer -= Time.fixedDeltaTime;
             rb.linearVelocity = facing * dashSpeed;
+            if (!IsDashing && dashTrail) dashTrail.emitting = false;
             return;
         }
 
@@ -106,6 +111,11 @@ public class PlayerController : MonoBehaviour
 
         Stamina -= dashCost;
         dashTimer = dashDuration;
+        if (dashTrail)
+        {
+            dashTrail.Clear();
+            dashTrail.emitting = true;
+        }
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -120,6 +130,7 @@ public class PlayerController : MonoBehaviour
 
             item.Collected = true;
             audioSource.PlayOneShot(collectClip);
+            SpawnFx(collectFx, other.transform.position, item.fxColor);
             GameManager.Instance.Collect(item);
             Destroy(other.gameObject);
         }
@@ -152,6 +163,8 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = away.normalized * knockback;
         knockbackTimer = 0.2f;
 
+        SpawnFx(hurtFx, transform.position, new Color(1f, 0.4f, 0.35f));
+        CameraController.Shake(0.25f, 0.3f);
         GameManager.Instance.PlayerHurt(Health);
     }
 
@@ -159,6 +172,8 @@ public class PlayerController : MonoBehaviour
     public void Die()
     {
         StopPhysics();
+        SpawnFx(hurtFx, transform.position, new Color(1f, 0.3f, 0.3f));
+        SpawnFx(hurtFx, transform.position, new Color(1f, 0.8f, 0.4f));
         StartCoroutine(ShrinkRoutine(transform.position));
     }
 
@@ -174,6 +189,7 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = Vector2.zero;
         rb.simulated = false;
         body.enabled = true;
+        if (dashTrail) dashTrail.emitting = false;
     }
 
     IEnumerator ShrinkRoutine(Vector3 target)
@@ -187,5 +203,14 @@ public class PlayerController : MonoBehaviour
             yield return null;
         }
         visual.localScale = Vector3.zero;
+    }
+
+    static void SpawnFx(ParticleSystem prefab, Vector3 position, Color color)
+    {
+        if (prefab == null) return;
+        ParticleSystem fx = Instantiate(prefab, position, Quaternion.identity);
+        ParticleSystem.MainModule main = fx.main;
+        main.startColor = color;
+        fx.Play();
     }
 }

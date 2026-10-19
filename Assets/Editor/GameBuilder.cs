@@ -6,6 +6,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 /// <summary>
@@ -21,6 +23,7 @@ public static class GameBuilder
     const string SceneDir = "Assets/Scenes/";
     const string MenuScenePath = SceneDir + "MainMenu.unity";
     const string GameScenePath = SceneDir + "Game.unity";
+    const string VolumeProfilePath = "Assets/Settings/GameVolumeProfile.asset";
 
     // Arena com 32 x 16 células de 1 unidade.
     // # parede | C cristal | O oxigênio | M mina | A alienígena | P jogador | X cápsula de fuga
@@ -53,9 +56,13 @@ public static class GameBuilder
     static Font pixelFont;
     static Font bodyFont;
     static Font titleFont;
+    static Material fxMaterial;
+    static Material trailMaterial;
     static PhysicsMaterial2D noFriction;
+    static VolumeProfile volumeProfile;
 
     static GameObject playerPrefab, crystalPrefab, oxygenPrefab, dronePrefab, alienPrefab, minePrefab, podPrefab;
+    static GameObject collectFxPrefab, hurtFxPrefab;
 
     [MenuItem("Coletor Estelar/Reconstruir Jogo")]
     public static void BuildFromMenu()
@@ -75,6 +82,7 @@ public static class GameBuilder
         pixelFont = bodyFont = titleFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
         CreateMaterials();
+        CreateVolumeProfile();
 
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         CreatePrefabs();
@@ -170,6 +178,10 @@ public static class GameBuilder
 
     static void CreateMaterials()
     {
+        Shader shader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default");
+        fxMaterial = CreateMaterial("FX_Particulas", shader, Load<Texture2D>(ArtDir + "Sprites/spark.png"));
+        trailMaterial = CreateMaterial("FX_Rastro", shader, Load<Texture2D>(ArtDir + "Sprites/square.png"));
+
         string physicsPath = MaterialDir + "SemAtrito.physicsMaterial2D";
         noFriction = AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>(physicsPath);
         if (noFriction == null)
@@ -177,6 +189,44 @@ public static class GameBuilder
             noFriction = new PhysicsMaterial2D("SemAtrito") { friction = 0f, bounciness = 0f };
             AssetDatabase.CreateAsset(noFriction, physicsPath);
         }
+    }
+
+    static Material CreateMaterial(string name, Shader shader, Texture texture)
+    {
+        string path = MaterialDir + name + ".mat";
+        Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat == null)
+        {
+            mat = new Material(shader);
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        mat.shader = shader;
+        mat.SetTexture("_MainTex", texture);
+        EditorUtility.SetDirty(mat);
+        return mat;
+    }
+
+    static void CreateVolumeProfile()
+    {
+        AssetDatabase.DeleteAsset(VolumeProfilePath);
+        volumeProfile = ScriptableObject.CreateInstance<VolumeProfile>();
+        AssetDatabase.CreateAsset(volumeProfile, VolumeProfilePath);
+
+        Bloom bloom = volumeProfile.Add<Bloom>(true);
+        bloom.threshold.Override(0.75f);
+        bloom.intensity.Override(1.1f);
+        bloom.scatter.Override(0.65f);
+
+        Vignette vignette = volumeProfile.Add<Vignette>(true);
+        vignette.intensity.Override(0.3f);
+        vignette.smoothness.Override(0.5f);
+
+        foreach (VolumeComponent component in volumeProfile.components)
+        {
+            component.name = component.GetType().Name;
+            AssetDatabase.AddObjectToAsset(component, volumeProfile);
+        }
+        EditorUtility.SetDirty(volumeProfile);
     }
 
     // ------------------------------------------------------------------ helpers de cena
@@ -203,6 +253,30 @@ public static class GameBuilder
         return shadow;
     }
 
+    static Light2D AddPointLight(GameObject go, Color color, float radius, float intensity)
+    {
+        var light = go.AddComponent<Light2D>();
+        light.lightType = Light2D.LightType.Point;
+        light.color = color;
+        light.intensity = intensity;
+        light.pointLightInnerRadius = 0f;
+        light.pointLightOuterRadius = radius;
+        light.falloffIntensity = 0.65f;
+        ApplyToAllSortingLayers(light);
+        return light;
+    }
+
+    static void ApplyToAllSortingLayers(Light2D light)
+    {
+        var so = new SerializedObject(light);
+        SerializedProperty prop = so.FindProperty("m_ApplyToSortingLayers");
+        if (prop == null) return;
+        SortingLayer[] layers = SortingLayer.layers;
+        prop.arraySize = layers.Length;
+        for (int i = 0; i < layers.Length; i++) prop.GetArrayElementAtIndex(i).intValue = layers[i].id;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
     static GameObject SavePrefab(GameObject go)
     {
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, PrefabDir + go.name + ".prefab");
@@ -220,8 +294,54 @@ public static class GameBuilder
 
     // ------------------------------------------------------------------ prefabs
 
+    static GameObject BuildBurstFx(string name, int count, float speedMin, float speedMax, float sizeMin, float sizeMax, float lifetime)
+    {
+        var go = new GameObject(name);
+        var ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        ParticleSystem.MainModule main = ps.main;
+        main.duration = 1f;
+        main.loop = false;
+        main.playOnAwake = true;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(lifetime * 0.6f, lifetime);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(speedMin, speedMax);
+        main.startSize = new ParticleSystem.MinMaxCurve(sizeMin, sizeMax);
+        main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+        main.startColor = Color.white;
+        main.gravityModifier = 0f;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.stopAction = ParticleSystemStopAction.Destroy;
+        main.maxParticles = 100;
+
+        ParticleSystem.EmissionModule emission = ps.emission;
+        emission.rateOverTime = 0f;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)count) });
+
+        ParticleSystem.ShapeModule shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Circle;
+        shape.radius = 0.15f;
+
+        ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime;
+        size.enabled = true;
+        size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0f));
+
+        ParticleSystem.LimitVelocityOverLifetimeModule limit = ps.limitVelocityOverLifetime;
+        limit.enabled = true;
+        limit.limit = 100f;
+        limit.drag = 3f;
+
+        var renderer = go.GetComponent<ParticleSystemRenderer>();
+        renderer.sharedMaterial = fxMaterial;
+        renderer.sortingOrder = 40;
+        return go;
+    }
+
     static void CreatePrefabs()
     {
+        collectFxPrefab = SavePrefab(BuildBurstFx("FX_Coleta", 16, 2f, 5f, 0.12f, 0.24f, 0.55f));
+        hurtFxPrefab = SavePrefab(BuildBurstFx("FX_Dano", 22, 3f, 7f, 0.14f, 0.3f, 0.6f));
+
         // ---------- Jogador (círculo vermelho do tutorial virou um astronauta)
         var player = new GameObject("Player") { tag = "Player" };
         var rb = player.AddComponent<Rigidbody2D>();
@@ -238,11 +358,31 @@ public static class GameBuilder
         AddShadow(player.transform, 0.8f, 18);
         GameObject visual = NewSprite("Visual", player.transform, Spr("player"), 20);
 
+        var trail = player.AddComponent<TrailRenderer>();
+        trail.time = 0.22f;
+        trail.minVertexDistance = 0.05f;
+        trail.widthCurve = AnimationCurve.Linear(0f, 0.6f, 1f, 0f);
+        trail.sharedMaterial = trailMaterial;
+        trail.sortingOrder = 15;
+        var gradient = new Gradient();
+        gradient.SetKeys(
+            new[] { new GradientColorKey(new Color(1f, 0.45f, 0.35f), 0f), new GradientColorKey(new Color(1f, 0.85f, 0.4f), 1f) },
+            new[] { new GradientAlphaKey(0.8f, 0f), new GradientAlphaKey(0f, 1f) });
+        trail.colorGradient = gradient;
+        trail.emitting = false;
+
+        var lamp = new GameObject("Lanterna");
+        lamp.transform.SetParent(player.transform, false);
+        AddPointLight(lamp, new Color(1f, 0.95f, 0.85f), 3.5f, 0.55f);
+
         var pc = player.AddComponent<PlayerController>();
         pc.visual = visual.transform;
         pc.body = visual.GetComponent<SpriteRenderer>();
+        pc.dashTrail = trail;
         pc.audioSource = audio;
         pc.collectClip = Sfx("collect");
+        pc.collectFx = collectFxPrefab.GetComponent<ParticleSystem>();
+        pc.hurtFx = hurtFxPrefab.GetComponent<ParticleSystem>();
         playerPrefab = SavePrefab(player);
 
         // ---------- Cristal (o triângulo coletável do tutorial)
@@ -256,7 +396,9 @@ public static class GameBuilder
         cc.kind = Collectible.Kind.Crystal;
         cc.points = 100;
         cc.oxygen = 3f;
+        cc.fxColor = new Color(0.5f, 0.95f, 1f);
         cc.visual = crystalVisual.transform;
+        AddPointLight(crystal, new Color(0.35f, 0.9f, 1f), 1.8f, 0.9f);
         crystalPrefab = SavePrefab(crystal);
 
         // ---------- Tanque de oxigênio
@@ -269,7 +411,9 @@ public static class GameBuilder
         tc.kind = Collectible.Kind.Oxygen;
         tc.points = 50;
         tc.oxygen = 10f;
+        tc.fxColor = new Color(0.4f, 1f, 0.55f);
         tc.visual = tankVisual.transform;
+        AddPointLight(tank, new Color(0.4f, 1f, 0.55f), 1.4f, 0.6f);
         oxygenPrefab = SavePrefab(tank);
 
         // ---------- Drone de patrulha
@@ -284,6 +428,7 @@ public static class GameBuilder
         GameObject droneVisual = NewSprite("Visual", drone.transform, Spr("drone"), 10);
         droneVisual.AddComponent<Floater>().rotateSpeed = 140f;
         drone.AddComponent<PatrolEnemy>();
+        AddPointLight(drone, new Color(1f, 0.3f, 0.25f), 1.5f, 0.7f);
         dronePrefab = SavePrefab(drone);
 
         // ---------- Alienígena perseguidor
@@ -308,6 +453,7 @@ public static class GameBuilder
         chaser.bodyCollider = bodyCollider;
         chaser.body = alienVisual.GetComponent<SpriteRenderer>();
         chaser.alertIcon = alert;
+        AddPointLight(alien, new Color(0.5f, 1f, 0.45f), 1.6f, 0.5f);
         alienPrefab = SavePrefab(alien);
 
         // ---------- Mina (inimigo parado)
@@ -317,6 +463,7 @@ public static class GameBuilder
         mcol.radius = 0.36f;
         GameObject mineVisual = NewSprite("Visual", mine.transform, Spr("mine"), 8);
         mineVisual.AddComponent<Floater>().rotateSpeed = 45f;
+        AddPointLight(mine, new Color(1f, 0.25f, 0.25f), 1.2f, 0.8f);
         minePrefab = SavePrefab(mine);
 
         // ---------- Cápsula de fuga
@@ -325,10 +472,19 @@ public static class GameBuilder
         pcol.isTrigger = true;
         pcol.radius = 0.5f;
         GameObject podVisual = NewSprite("Visual", pod.transform, Spr("pod_locked"), 4);
+        GameObject openFx = BuildBurstFx("FX_Abertura", 40, 3f, 7f, 0.15f, 0.3f, 0.9f);
+        openFx.transform.SetParent(pod.transform, false);
+        var openPs = openFx.GetComponent<ParticleSystem>();
+        ParticleSystem.MainModule openMain = openPs.main;
+        openMain.playOnAwake = false;
+        openMain.stopAction = ParticleSystemStopAction.None;
+        openMain.startColor = new Color(0.4f, 1f, 0.6f);
         var exit = pod.AddComponent<ExitPod>();
         exit.body = podVisual.GetComponent<SpriteRenderer>();
         exit.lockedSprite = Spr("pod_locked");
         exit.openSprite = Spr("pod_open");
+        exit.glow = AddPointLight(pod, new Color(1f, 0.25f, 0.3f), 3f, 0.6f);
+        exit.openFx = openPs;
         podPrefab = SavePrefab(pod);
 
         log.AppendLine("Prefabs criados.");
@@ -342,6 +498,16 @@ public static class GameBuilder
 
         Camera cam = CreateCamera(new Vector3(0f, 0.5f, -10f), 10.1f);
         cam.gameObject.AddComponent<CameraController>();
+
+        var globalLight = new GameObject("Global Light 2D").AddComponent<Light2D>();
+        globalLight.lightType = Light2D.LightType.Global;
+        globalLight.intensity = 0.8f;
+        globalLight.color = new Color(0.82f, 0.88f, 1f);
+        ApplyToAllSortingLayers(globalLight);
+
+        var volume = new GameObject("Global Volume").AddComponent<Volume>();
+        volume.isGlobal = true;
+        volume.sharedProfile = volumeProfile;
 
         GameObject background = NewSprite("FundoEspacial", null, Load<Sprite>(ArtDir + "Backgrounds/space.png"), -100, 1.3f);
         background.transform.position = new Vector3(0f, 0.5f, 0f);
@@ -517,6 +683,7 @@ public static class GameBuilder
         var gate = root.AddComponent<LaserGate>();
         gate.beam = beamRenderer;
         gate.beamCollider = beamCollider;
+        gate.glow = AddPointLight(root, new Color(1f, 0.25f, 0.3f), d.magnitude * 0.6f + 0.8f, 1.2f);
         gate.timeOffset = offset;
     }
 
@@ -530,6 +697,7 @@ public static class GameBuilder
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color32(8, 10, 22, 255);
         go.AddComponent<AudioListener>();
+        cam.GetUniversalAdditionalCameraData().renderPostProcessing = true;
         return cam;
     }
 

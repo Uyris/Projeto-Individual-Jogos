@@ -12,6 +12,7 @@ public class Collectible : MonoBehaviour
     public int points = 100;
     [Tooltip("Segundos de oxigênio recuperados ao coletar")]
     public float oxygen = 3f;
+    public Color fxColor = new Color(0.5f, 0.95f, 1f);
     public Transform visual;
 
     public bool Collected { get; set; }

@@ -309,6 +309,14 @@ def make_circle(n=32):
     return img
 
 
+def make_spark():
+    img = canvas(8)
+    rect(img, 3, 0, 4, 7, (255, 255, 255, 255))
+    rect(img, 0, 3, 7, 4, (255, 255, 255, 255))
+    rect(img, 2, 2, 5, 5, (255, 255, 255, 255))
+    return img
+
+
 def make_space_bg(w=960, h=540, seed=3):
     r = np.random.default_rng(seed)
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
@@ -359,6 +367,7 @@ def build_sprites():
     save(make_wall(), SPR, "wall.png")
     save(make_white(32), SPR, "square.png")
     save(make_circle(32), SPR, "circle.png")
+    save(make_spark(), SPR, "spark.png")
     save(make_space_bg(), BG, "space.png")
 
 

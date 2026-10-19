@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 /// <summary>
 /// Barreira de laser que liga e desliga em um ciclo de tempo fixo.
@@ -14,6 +15,7 @@ public class LaserGate : MonoBehaviour
     [Header("Referências")]
     public SpriteRenderer beam;
     public Collider2D beamCollider;
+    public Light2D glow;
     public Color beamColor = new Color(1f, 0.2f, 0.28f);
 
     float clock;
@@ -42,5 +44,6 @@ public class LaserGate : MonoBehaviour
         Color c = beamColor;
         c.a = alpha;
         beam.color = c;
+        if (glow) glow.intensity = on ? 1.2f : (warning ? 0.4f : 0f);
     }
 }
