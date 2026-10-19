@@ -1,8 +1,10 @@
+using System.Globalization;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
-/// GameManager estático (tutorial "End Game, Static GameManager"): conta os cristais
-/// coletados e termina o jogo quando todos forem pegos.
+/// GameManager estático (tutorial "End Game, Static GameManager"): controla o cronômetro,
+/// a pontuação e o fim de jogo.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -11,10 +13,13 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
     public static bool IsPlaying => Instance != null && Instance.CurrentState == State.Playing;
 
+    public const string MenuScene = "MainMenu";
+
     [Header("Referências")]
-    public GameObject victoryText;
+    public HUD hud;
 
     public State CurrentState { get; private set; }
+    public float ElapsedTime { get; private set; }
     public int Score { get; private set; }
     public int CrystalsCollected { get; private set; }
     public int TotalCrystals { get; private set; }
@@ -36,7 +41,14 @@ public class GameManager : MonoBehaviour
             TotalCrystals++;
 
         CurrentState = State.Playing;
-        victoryText.SetActive(false);
+    }
+
+    void Update()
+    {
+        if (CurrentState != State.Playing) return;
+
+        // Cronômetro da partida.
+        ElapsedTime += Time.deltaTime;
     }
 
     public void Collect(Collectible item)
@@ -53,6 +65,30 @@ public class GameManager : MonoBehaviour
     void Win()
     {
         CurrentState = State.Won;
-        victoryText.SetActive(true);
+        Time.timeScale = 0f;
+        hud.ShowVictory(ElapsedTime, Score);
+    }
+
+    public void Restart()
+    {
+        LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    public void GoToMenu()
+    {
+        LoadScene(MenuScene);
+    }
+
+    static void LoadScene(string scene)
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(scene);
+    }
+
+    public static string FormatTime(float seconds)
+    {
+        int minutes = (int)(seconds / 60f);
+        float rest = seconds - minutes * 60f;
+        return minutes.ToString("00") + ":" + rest.ToString("00.00", CultureInfo.InvariantCulture);
     }
 }

@@ -258,14 +258,13 @@ public static class GameBuilder
             Place(crystalPrefab, new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 5f, items);
         }
 
-        // ---------- Gerenciador e mensagem de vitória
-        Canvas canvas = CreateCanvas("Canvas", 10);
-        Text victory = AddText(canvas.transform, "MensagemVitoria", "VOCÊ VENCEU!", titleFont, 120, UiGold, TextAnchor.MiddleCenter,
-                               new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1600f, 200f));
+        // ---------- Gerenciadores e HUD
+        HUD hud = BuildHud();
+        CreateEventSystem();
 
         var managers = new GameObject("GameManager");
         var gm = managers.AddComponent<GameManager>();
-        gm.victoryText = victory.gameObject;
+        gm.hud = hud;
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), GameScenePath);
         log.AppendLine("Cena do jogo salva.");
@@ -384,6 +383,19 @@ public static class GameBuilder
         return button;
     }
 
+    static (GameObject root, RectTransform window) AddPanel(Transform parent, string name, string title, Color titleColor, Vector2 size)
+    {
+        RectTransform root = Stretch(NewUI(name, parent));
+        var dim = root.gameObject.AddComponent<Image>();
+        dim.color = new Color(0f, 0f, 0.02f, 0.72f);
+        dim.raycastTarget = true;
+
+        Image window = AddImage(root, "Janela", DefaultUi("Background.psd"), new Color(0.09f, 0.12f, 0.22f), new Vector2(0.5f, 0.5f), Vector2.zero, size, true);
+        AddText(window.transform, "Titulo", title, titleFont, 80, titleColor, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(size.x - 40f, 80f));
+        return (root.gameObject, window.rectTransform);
+    }
+
     static Canvas CreateCanvas(string name, int order)
     {
         var go = new GameObject(name, typeof(RectTransform));
@@ -400,6 +412,46 @@ public static class GameBuilder
         return canvas;
     }
 
+    static HUD BuildHud()
+    {
+        Canvas canvas = CreateCanvas("HUD", 10);
+        var hud = canvas.gameObject.AddComponent<HUD>();
+        Transform root = canvas.transform;
+        Vector2 left = new Vector2(0f, 0.5f), center = new Vector2(0.5f, 0.5f), right = new Vector2(1f, 0.5f);
+
+        // ---------- barra superior
+        Image bar = AddImage(root, "BarraSuperior", Spr("square"), new Color(0.03f, 0.04f, 0.09f, 0.85f),
+                             new Vector2(0.5f, 1f), Vector2.zero, new Vector2(0f, 112f), false, new Vector2(0.5f, 1f));
+        bar.rectTransform.anchorMin = new Vector2(0f, 1f);
+        bar.rectTransform.anchorMax = new Vector2(1f, 1f);
+        Transform b = bar.transform;
+
+        AddText(b, "RotuloCristais", "CRISTAIS", pixelFont, 16, UiMuted, TextAnchor.MiddleLeft,
+                left, new Vector2(40f, 24f), new Vector2(240f, 30f), new Vector2(0f, 0.5f));
+        hud.crystalText = AddText(b, "Cristais", "0/12", pixelFont, 32, UiCyan, TextAnchor.MiddleLeft,
+                                  left, new Vector2(40f, -16f), new Vector2(240f, 50f), new Vector2(0f, 0.5f));
+        AddText(b, "RotuloPontos", "PONTOS", pixelFont, 16, UiMuted, TextAnchor.MiddleLeft,
+                left, new Vector2(310f, 24f), new Vector2(240f, 30f), new Vector2(0f, 0.5f));
+        hud.scoreText = AddText(b, "Pontos", "00000", pixelFont, 32, UiGold, TextAnchor.MiddleLeft,
+                                left, new Vector2(310f, -16f), new Vector2(240f, 50f), new Vector2(0f, 0.5f));
+
+        AddText(b, "RotuloTempo", "TEMPO", pixelFont, 16, UiMuted, TextAnchor.MiddleCenter,
+                center, new Vector2(0f, 26f), new Vector2(300f, 30f));
+        hud.timeText = AddText(b, "Tempo", "00:00.00", pixelFont, 40, UiText, TextAnchor.MiddleCenter,
+                               center, new Vector2(16f, -14f), new Vector2(380f, 56f));
+
+        // ---------- vitória
+        var (winRoot, winWindow) = AddPanel(root, "PainelVitoria", "VOCÊ VENCEU!", new Color(0.45f, 1f, 0.6f), new Vector2(900f, 740f));
+        hud.victoryStatsText = AddText(winWindow, "Resumo", "", titleFont, 48, UiText, TextAnchor.MiddleCenter,
+                                       center, new Vector2(0f, 130f), new Vector2(560f, 200f));
+        hud.victoryStatsText.lineSpacing = 1f;
+        hud.victoryRestartButton = AddButton(winWindow, "BotaoJogar", "JOGAR DE NOVO", new Vector2(0f, -150f), new Vector2(520f, 76f));
+        hud.victoryMenuButton = AddButton(winWindow, "BotaoMenu", "MENU PRINCIPAL", new Vector2(0f, -246f), new Vector2(520f, 76f));
+        hud.victoryPanel = winRoot;
+
+        return hud;
+    }
+
     // ------------------------------------------------------------------ menu
 
     static void BuildMenuScene()
@@ -413,7 +465,7 @@ public static class GameBuilder
 
         AddText(root, "Titulo", "COLETOR ESTELAR", pixelFont, 88, UiGold, TextAnchor.MiddleCenter,
                 center, new Vector2(0f, 340f), new Vector2(1800f, 120f)).GetComponent<Shadow>().effectDistance = new Vector2(8f, -8f);
-        AddText(root, "Subtitulo", "Colete todos os cristais!", bodyFont, 48, UiCyan,
+        AddText(root, "Subtitulo", "Colete todos os cristais no menor tempo possível!", bodyFont, 48, UiCyan,
                 TextAnchor.MiddleCenter, center, new Vector2(0f, 250f), new Vector2(1600f, 60f));
 
         // ---------- painel principal
