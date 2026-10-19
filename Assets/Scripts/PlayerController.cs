@@ -69,6 +69,9 @@ public class PlayerController : MonoBehaviour
             invulnerableTimer -= Time.deltaTime;
             body.enabled = invulnerableTimer <= 0f || Mathf.Repeat(invulnerableTimer, 0.16f) > 0.08f;
         }
+
+        float angle = Mathf.Atan2(facing.y, facing.x) * Mathf.Rad2Deg;
+        visual.rotation = Quaternion.RotateTowards(visual.rotation, Quaternion.Euler(0f, 0f, angle), 900f * Time.deltaTime);
     }
 
     void FixedUpdate()

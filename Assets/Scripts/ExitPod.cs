@@ -4,6 +4,8 @@ using UnityEngine;
 public class ExitPod : MonoBehaviour
 {
     public SpriteRenderer body;
+    public Sprite lockedSprite;
+    public Sprite openSprite;
     public Color lockedColor = new Color(1f, 0.25f, 0.3f);
     public Color openColor = new Color(0.3f, 1f, 0.55f);
 
@@ -11,7 +13,7 @@ public class ExitPod : MonoBehaviour
 
     void Start()
     {
-        body.color = lockedColor;
+        body.sprite = lockedSprite;
     }
 
     void Update()
@@ -23,6 +25,6 @@ public class ExitPod : MonoBehaviour
     {
         if (IsOpen) return;
         IsOpen = true;
-        body.color = openColor;
+        body.sprite = openSprite;
     }
 }

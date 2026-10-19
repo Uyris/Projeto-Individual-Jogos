@@ -123,14 +123,16 @@ public static class GameBuilder
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (!(AssetImporter.GetAtPath(path) is TextureImporter ti)) continue;
 
+            bool background = path.Contains("/Backgrounds/");
+
             ti.textureType = TextureImporterType.Sprite;
             ti.spriteImportMode = SpriteImportMode.Single;
-            ti.spritePixelsPerUnit = 32;
-            ti.filterMode = FilterMode.Point;
+            ti.spritePixelsPerUnit = background ? 24 : 32;
+            ti.filterMode = background ? FilterMode.Bilinear : FilterMode.Point;
             ti.textureCompression = TextureImporterCompression.Uncompressed;
             ti.mipmapEnabled = false;
             ti.alphaIsTransparency = true;
-            ti.wrapMode = TextureWrapMode.Clamp;
+            ti.wrapMode = background ? TextureWrapMode.Mirror : TextureWrapMode.Clamp;
 
             var settings = new TextureImporterSettings();
             ti.ReadTextureSettings(settings);
@@ -192,12 +194,13 @@ public static class GameBuilder
         return go;
     }
 
-    // Sprite básico (quadrado, círculo ou triângulo) com a cor trocada.
-    static GameObject Shape(string name, Transform parent, string shape, Color color, int order, float scale = 1f)
+    static GameObject AddShadow(Transform parent, float size, int order)
     {
-        GameObject go = NewSprite(name, parent, Spr(shape), order, scale);
-        go.GetComponent<SpriteRenderer>().color = color;
-        return go;
+        GameObject shadow = NewSprite("Sombra", parent, Spr("circle"), order);
+        shadow.transform.localPosition = new Vector3(0.08f, -0.14f, 0f);
+        shadow.transform.localScale = new Vector3(size, size * 0.8f, 1f);
+        shadow.GetComponent<SpriteRenderer>().color = new Color(0f, 0f, 0f, 0.35f);
+        return shadow;
     }
 
     static GameObject SavePrefab(GameObject go)
@@ -219,7 +222,7 @@ public static class GameBuilder
 
     static void CreatePrefabs()
     {
-        // ---------- Jogador (círculo vermelho do tutorial)
+        // ---------- Jogador (círculo vermelho do tutorial virou um astronauta)
         var player = new GameObject("Player") { tag = "Player" };
         var rb = player.AddComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
@@ -232,7 +235,8 @@ public static class GameBuilder
         var audio = player.AddComponent<AudioSource>();
         audio.playOnAwake = false;
 
-        GameObject visual = Shape("Visual", player.transform, "circle", new Color(0.9f, 0.25f, 0.25f), 20, 0.75f);
+        AddShadow(player.transform, 0.8f, 18);
+        GameObject visual = NewSprite("Visual", player.transform, Spr("player"), 20);
 
         var pc = player.AddComponent<PlayerController>();
         pc.visual = visual.transform;
@@ -247,7 +251,7 @@ public static class GameBuilder
         poly.isTrigger = true;
         poly.pathCount = 1;
         poly.SetPath(0, new[] { new Vector2(0f, 0.41f), new Vector2(-0.38f, -0.38f), new Vector2(0.38f, -0.38f) });
-        GameObject crystalVisual = Shape("Visual", crystal.transform, "triangle", new Color(0.35f, 0.9f, 1f), 5);
+        GameObject crystalVisual = NewSprite("Visual", crystal.transform, Spr("crystal"), 5);
         var cc = crystal.AddComponent<Collectible>();
         cc.kind = Collectible.Kind.Crystal;
         cc.points = 100;
@@ -260,7 +264,7 @@ public static class GameBuilder
         var box = tank.AddComponent<BoxCollider2D>();
         box.isTrigger = true;
         box.size = new Vector2(0.5f, 0.8f);
-        GameObject tankVisual = Shape("Visual", tank.transform, "circle", new Color(0.3f, 0.95f, 0.45f), 5);
+        GameObject tankVisual = NewSprite("Visual", tank.transform, Spr("oxygen_tank"), 5);
         var tc = tank.AddComponent<Collectible>();
         tc.kind = Collectible.Kind.Oxygen;
         tc.points = 50;
@@ -276,7 +280,9 @@ public static class GameBuilder
         var dcol = drone.AddComponent<CircleCollider2D>();
         dcol.isTrigger = true;
         dcol.radius = 0.4f;
-        Shape("Visual", drone.transform, "circle", new Color(1f, 0.45f, 0.2f), 10, 0.8f);
+        AddShadow(drone.transform, 0.75f, 9);
+        GameObject droneVisual = NewSprite("Visual", drone.transform, Spr("drone"), 10);
+        droneVisual.AddComponent<Floater>().rotateSpeed = 140f;
         drone.AddComponent<PatrolEnemy>();
         dronePrefab = SavePrefab(drone);
 
@@ -294,10 +300,14 @@ public static class GameBuilder
         var hcol = hitbox.AddComponent<CircleCollider2D>();
         hcol.isTrigger = true;
         hcol.radius = 0.4f;
-        GameObject alienVisual = Shape("Visual", alien.transform, "circle", new Color(0.4f, 0.9f, 0.35f), 11, 0.85f);
+        AddShadow(alien.transform, 0.85f, 10);
+        GameObject alienVisual = NewSprite("Visual", alien.transform, Spr("alien"), 11, 1.1f);
+        GameObject alert = NewSprite("Alerta", alien.transform, Spr("alert"), 30);
+        alert.transform.localPosition = new Vector3(0f, 0.9f, 0f);
         var chaser = alien.AddComponent<ChaserEnemy>();
         chaser.bodyCollider = bodyCollider;
         chaser.body = alienVisual.GetComponent<SpriteRenderer>();
+        chaser.alertIcon = alert;
         alienPrefab = SavePrefab(alien);
 
         // ---------- Mina (inimigo parado)
@@ -305,7 +315,8 @@ public static class GameBuilder
         var mcol = mine.AddComponent<CircleCollider2D>();
         mcol.isTrigger = true;
         mcol.radius = 0.36f;
-        Shape("Visual", mine.transform, "circle", new Color(0.75f, 0.2f, 0.55f), 8, 0.75f);
+        GameObject mineVisual = NewSprite("Visual", mine.transform, Spr("mine"), 8);
+        mineVisual.AddComponent<Floater>().rotateSpeed = 45f;
         minePrefab = SavePrefab(mine);
 
         // ---------- Cápsula de fuga
@@ -313,9 +324,11 @@ public static class GameBuilder
         var pcol = pod.AddComponent<CircleCollider2D>();
         pcol.isTrigger = true;
         pcol.radius = 0.5f;
-        GameObject podVisual = Shape("Visual", pod.transform, "circle", Color.white, 4, 1.4f);
+        GameObject podVisual = NewSprite("Visual", pod.transform, Spr("pod_locked"), 4);
         var exit = pod.AddComponent<ExitPod>();
         exit.body = podVisual.GetComponent<SpriteRenderer>();
+        exit.lockedSprite = Spr("pod_locked");
+        exit.openSprite = Spr("pod_open");
         podPrefab = SavePrefab(pod);
 
         log.AppendLine("Prefabs criados.");
@@ -330,9 +343,12 @@ public static class GameBuilder
         Camera cam = CreateCamera(new Vector3(0f, 0.5f, -10f), 10.1f);
         cam.gameObject.AddComponent<CameraController>();
 
+        GameObject background = NewSprite("FundoEspacial", null, Load<Sprite>(ArtDir + "Backgrounds/space.png"), -100, 1.3f);
+        background.transform.position = new Vector3(0f, 0.5f, 0f);
+
         // ---------- Arena
         Transform arena = new GameObject("Arena").transform;
-        GameObject floor = Shape("Piso", arena, "square", new Color(0.11f, 0.13f, 0.2f), -10);
+        GameObject floor = NewSprite("Piso", arena, Spr("floor"), -10);
         floor.transform.position = new Vector3(0f, -0.5f, 0f);
         var floorRenderer = floor.GetComponent<SpriteRenderer>();
         floorRenderer.drawMode = SpriteDrawMode.Tiled;
@@ -420,7 +436,7 @@ public static class GameBuilder
 
     static void CreateWall(Transform parent, float left, float top, float width, float height)
     {
-        GameObject wall = Shape("Parede", parent, "square", new Color(0.27f, 0.33f, 0.48f), 0);
+        GameObject wall = NewSprite("Parede", parent, Spr("wall"), 0);
         wall.tag = "Parede";
         wall.transform.position = new Vector3(left + width * 0.5f, top - height * 0.5f, 0f);
         var sr = wall.GetComponent<SpriteRenderer>();
@@ -491,10 +507,10 @@ public static class GameBuilder
         beamCollider.isTrigger = true;
         beamCollider.size = new Vector2(1f, 1.4f);
 
-        GameObject e1 = Shape("EmissorA", root.transform, "square", new Color(0.45f, 0.5f, 0.6f), 8, 0.5f);
+        GameObject e1 = NewSprite("EmissorA", root.transform, Spr("laser_emitter"), 8);
         e1.transform.position = a;
         e1.transform.rotation = Quaternion.Euler(0f, 0f, angle);
-        GameObject e2 = Shape("EmissorB", root.transform, "square", new Color(0.45f, 0.5f, 0.6f), 8, 0.5f);
+        GameObject e2 = NewSprite("EmissorB", root.transform, Spr("laser_emitter"), 8);
         e2.transform.position = b;
         e2.transform.rotation = Quaternion.Euler(0f, 0f, angle + 180f);
 

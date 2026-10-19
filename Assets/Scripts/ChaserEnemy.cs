@@ -20,9 +20,10 @@ public class ChaserEnemy : MonoBehaviour
     [Header("Referências")]
     public Collider2D bodyCollider;
     public SpriteRenderer body;
+    public GameObject alertIcon;
 
     static readonly RaycastHit2D[] Hits = new RaycastHit2D[8];
-    static readonly Color ChaseColor = new Color(1f, 0.35f, 0.3f);
+    static readonly Color ChaseTint = new Color(1f, 0.55f, 0.55f);
 
     Rigidbody2D rb;
     Transform player;
@@ -32,13 +33,11 @@ public class ChaserEnemy : MonoBehaviour
     float searchTimer;
     float stuckTimer;
     Vector3 baseScale;
-    Color baseColor;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         baseScale = body.transform.localScale;
-        baseColor = body.color;
     }
 
     void Start()
@@ -47,6 +46,7 @@ public class ChaserEnemy : MonoBehaviour
         player = p.transform;
         // O corpo colide com as paredes mas não empurra o jogador; o dano vem do trigger "Inimigo".
         Physics2D.IgnoreCollision(bodyCollider, p.GetComponent<Collider2D>());
+        alertIcon.SetActive(false);
     }
 
     void FixedUpdate()
@@ -134,10 +134,11 @@ public class ChaserEnemy : MonoBehaviour
     void Update()
     {
         bool chasing = mode == Mode.Chase && GameManager.IsPlaying;
+        alertIcon.SetActive(chasing);
 
         float wobble = Mathf.Sin(Time.time * (chasing ? 16f : 6f)) * 0.07f;
         body.transform.localScale = new Vector3(baseScale.x * (1f + wobble), baseScale.y * (1f - wobble), 1f);
-        body.color = Color.Lerp(body.color, chasing ? ChaseColor : baseColor, Time.deltaTime * 6f);
+        body.color = Color.Lerp(body.color, chasing ? ChaseTint : Color.white, Time.deltaTime * 6f);
         if (Mathf.Abs(rb.linearVelocity.x) > 0.1f) body.flipX = rb.linearVelocity.x < 0f;
     }
 
