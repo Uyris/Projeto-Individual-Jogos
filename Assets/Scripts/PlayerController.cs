@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -12,6 +13,7 @@ public class PlayerController : MonoBehaviour
     public float acceleration = 50f;
 
     [Header("Referências")]
+    public Transform visual;
     public AudioSource audioSource;
     public AudioClip collectClip;
 
@@ -64,5 +66,31 @@ public class PlayerController : MonoBehaviour
             GameManager.Instance.Collect(item);
             Destroy(other.gameObject);
         }
+    }
+
+    /// <summary>Chamado pelo GameManager na derrota.</summary>
+    public void Die()
+    {
+        StopPhysics();
+        StartCoroutine(ShrinkRoutine(transform.position));
+    }
+
+    void StopPhysics()
+    {
+        rb.linearVelocity = Vector2.zero;
+        rb.simulated = false;
+    }
+
+    IEnumerator ShrinkRoutine(Vector3 target)
+    {
+        Vector3 start = transform.position;
+        for (float t = 0f; t < 1f; t += Time.unscaledDeltaTime / 0.8f)
+        {
+            transform.position = Vector3.Lerp(start, target, t);
+            visual.localScale = Vector3.one * (1f - t);
+            visual.Rotate(0f, 0f, 720f * Time.unscaledDeltaTime);
+            yield return null;
+        }
+        visual.localScale = Vector3.zero;
     }
 }

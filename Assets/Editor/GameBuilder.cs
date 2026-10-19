@@ -22,12 +22,12 @@ public static class GameBuilder
     const string GameScenePath = SceneDir + "Game.unity";
 
     // Arena com 32 x 16 células de 1 unidade.
-    // # parede | C cristal | P jogador
+    // # parede | C cristal | O oxigênio | P jogador
     static readonly string[] Map =
     {
         "..C......#..........C.....#.....",
         ".........#................#.....",
-        ".........#..######..####..#.....",
+        "...O.....#..######..####..#.....",
         ".........#..#..........#..##..##",
         "####..####..#...C......#........",
         "............#..........#....C...",
@@ -37,10 +37,10 @@ public static class GameBuilder
         "######..###.....C...............",
         "........#...######..####........",
         "..P.....#..............#........",
-        "........#..............#..C.....",
+        "........#..............#..C..O..",
         "..C.........C.....######........",
         "........#..........C............",
-        "........#..C.................C..",
+        "...O....#..C.................C..",
     };
 
     static readonly Color UiText = Color.white;
@@ -54,7 +54,7 @@ public static class GameBuilder
     static Font titleFont;
     static PhysicsMaterial2D noFriction;
 
-    static GameObject playerPrefab, crystalPrefab;
+    static GameObject playerPrefab, crystalPrefab, oxygenPrefab;
 
     [MenuItem("Coletor Estelar/Reconstruir Jogo")]
     public static void BuildFromMenu()
@@ -234,6 +234,7 @@ public static class GameBuilder
         GameObject visual = Shape("Visual", player.transform, "circle", new Color(0.9f, 0.25f, 0.25f), 20, 0.75f);
 
         var pc = player.AddComponent<PlayerController>();
+        pc.visual = visual.transform;
         pc.audioSource = audio;
         pc.collectClip = Sfx("collect");
         playerPrefab = SavePrefab(player);
@@ -246,9 +247,24 @@ public static class GameBuilder
         poly.SetPath(0, new[] { new Vector2(0f, 0.41f), new Vector2(-0.38f, -0.38f), new Vector2(0.38f, -0.38f) });
         GameObject crystalVisual = Shape("Visual", crystal.transform, "triangle", new Color(0.35f, 0.9f, 1f), 5);
         var cc = crystal.AddComponent<Collectible>();
+        cc.kind = Collectible.Kind.Crystal;
         cc.points = 100;
+        cc.oxygen = 3f;
         cc.visual = crystalVisual.transform;
         crystalPrefab = SavePrefab(crystal);
+
+        // ---------- Tanque de oxigênio
+        var tank = new GameObject("TanqueOxigenio") { tag = "Coletavel" };
+        var box = tank.AddComponent<BoxCollider2D>();
+        box.isTrigger = true;
+        box.size = new Vector2(0.5f, 0.8f);
+        GameObject tankVisual = Shape("Visual", tank.transform, "circle", new Color(0.3f, 0.95f, 0.45f), 5);
+        var tc = tank.AddComponent<Collectible>();
+        tc.kind = Collectible.Kind.Oxygen;
+        tc.points = 50;
+        tc.oxygen = 10f;
+        tc.visual = tankVisual.transform;
+        oxygenPrefab = SavePrefab(tank);
 
         log.AppendLine("Prefabs criados.");
     }
@@ -293,6 +309,7 @@ public static class GameBuilder
                 switch (Map[r][c])
                 {
                     case 'C': Place(crystalPrefab, p, items); break;
+                    case 'O': Place(oxygenPrefab, p, items); break;
                     case 'P': playerGO = Place(playerPrefab, p, null); break;
                 }
             }
@@ -304,6 +321,7 @@ public static class GameBuilder
 
         var managers = new GameObject("GameManager");
         var gm = managers.AddComponent<GameManager>();
+        gm.player = playerGO.GetComponent<PlayerController>();
         gm.hud = hud;
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), GameScenePath);
@@ -477,6 +495,21 @@ public static class GameBuilder
         return (root.gameObject, window.rectTransform);
     }
 
+    static (RectTransform fill, Image fillImage) AddBar(Transform parent, string name, Vector2 anchor, Vector2 position, Vector2 size, Color color)
+    {
+        Image frame = AddImage(parent, name, Spr("square"), new Color(0.05f, 0.06f, 0.12f), anchor, position, size, false, new Vector2(1f, 0.5f));
+        RectTransform area = Stretch(NewUI("Area", frame.transform), 8f);
+        RectTransform fill = NewUI("Preenchimento", area);
+        fill.anchorMin = Vector2.zero;
+        fill.anchorMax = Vector2.one;
+        fill.offsetMin = fill.offsetMax = Vector2.zero;
+        var fillImage = fill.gameObject.AddComponent<Image>();
+        fillImage.sprite = Spr("square");
+        fillImage.color = color;
+        fillImage.raycastTarget = false;
+        return (fill, fillImage);
+    }
+
     static Canvas CreateCanvas(string name, int order)
     {
         var go = new GameObject(name, typeof(RectTransform));
@@ -521,11 +554,30 @@ public static class GameBuilder
         hud.timeText = AddText(b, "Tempo", "00:00.00", pixelFont, 40, UiText, TextAnchor.MiddleCenter,
                                center, new Vector2(16f, -14f), new Vector2(380f, 56f));
 
+        AddText(b, "RotuloOxigenio", "O2", pixelFont, 16, UiMuted, TextAnchor.MiddleRight,
+                right, new Vector2(-626f, 20f), new Vector2(80f, 34f));
+        (hud.oxygenFill, hud.oxygenFillImage) = AddBar(b, "BarraOxigenio", right, new Vector2(-250f, 20f), new Vector2(330f, 34f), UiCyan);
+        hud.oxygenText = AddText(hud.oxygenFill.parent.parent, "TextoOxigenio", "60s", pixelFont, 16, UiText, TextAnchor.MiddleCenter,
+                                 center, new Vector2(0f, 0f), new Vector2(320f, 30f));
+
+        // ---------- derrota
+        var (overRoot, overWindow) = AddPanel(root, "PainelDerrota", "FIM DE JOGO", new Color(1f, 0.35f, 0.35f), new Vector2(900f, 680f));
+        hud.gameOverReasonText = AddText(overWindow, "Motivo", "", titleFont, 52, new Color(1f, 0.7f, 0.4f), TextAnchor.MiddleCenter,
+                                         center, new Vector2(0f, 180f), new Vector2(820f, 50f));
+        hud.gameOverStatsText = AddText(overWindow, "Resumo", "", titleFont, 48, UiText, TextAnchor.MiddleCenter,
+                                        center, new Vector2(0f, 50f), new Vector2(560f, 160f));
+        hud.gameOverStatsText.lineSpacing = 1f;
+        hud.gameOverRestartButton = AddButton(overWindow, "BotaoTentar", "TENTAR DE NOVO", new Vector2(0f, -150f), new Vector2(520f, 76f));
+        hud.gameOverMenuButton = AddButton(overWindow, "BotaoMenu", "MENU PRINCIPAL", new Vector2(0f, -246f), new Vector2(520f, 76f));
+        hud.gameOverPanel = overRoot;
+
         // ---------- vitória
         var (winRoot, winWindow) = AddPanel(root, "PainelVitoria", "VOCÊ VENCEU!", new Color(0.45f, 1f, 0.6f), new Vector2(900f, 740f));
         hud.victoryStatsText = AddText(winWindow, "Resumo", "", titleFont, 48, UiText, TextAnchor.MiddleCenter,
                                        center, new Vector2(0f, 130f), new Vector2(560f, 200f));
         hud.victoryStatsText.lineSpacing = 1f;
+        hud.victoryRecordText = AddText(winWindow, "Recorde", "", titleFont, 52, UiGold, TextAnchor.MiddleCenter,
+                                        center, new Vector2(0f, -40f), new Vector2(820f, 50f));
         hud.victoryRestartButton = AddButton(winWindow, "BotaoJogar", "JOGAR DE NOVO", new Vector2(0f, -150f), new Vector2(520f, 76f));
         hud.victoryMenuButton = AddButton(winWindow, "BotaoMenu", "MENU PRINCIPAL", new Vector2(0f, -246f), new Vector2(520f, 76f));
         hud.victoryPanel = winRoot;
@@ -546,7 +598,7 @@ public static class GameBuilder
 
         AddText(root, "Titulo", "COLETOR ESTELAR", pixelFont, 88, UiGold, TextAnchor.MiddleCenter,
                 center, new Vector2(0f, 340f), new Vector2(1800f, 120f)).GetComponent<Shadow>().effectDistance = new Vector2(8f, -8f);
-        AddText(root, "Subtitulo", "Colete todos os cristais no menor tempo possível!", bodyFont, 48, UiCyan,
+        AddText(root, "Subtitulo", "Colete os cristais e fuja da estação antes que o oxigênio acabe!", bodyFont, 48, UiCyan,
                 TextAnchor.MiddleCenter, center, new Vector2(0f, 250f), new Vector2(1600f, 60f));
 
         // ---------- painel principal

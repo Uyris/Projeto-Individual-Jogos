@@ -301,5 +301,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   speed: 6
   acceleration: 50
+  visual: {fileID: 690821451660585000}
   audioSource: {fileID: 121204835369419520}
   collectClip: {fileID: 8300000, guid: f7e0b18e01b949c45af8fe7851c3a67a, type: 3}

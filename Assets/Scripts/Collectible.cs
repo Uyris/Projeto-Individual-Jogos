@@ -1,12 +1,17 @@
 using UnityEngine;
 
 /// <summary>
-/// Item coletável (prefab) que flutua no lugar até ser pego.
+/// Item coletável (prefab). Cristais dão pontos; tanques recuperam oxigênio.
 /// A detecção é feita pelo jogador através da tag "Coletavel".
 /// </summary>
 public class Collectible : MonoBehaviour
 {
+    public enum Kind { Crystal, Oxygen }
+
+    public Kind kind = Kind.Crystal;
     public int points = 100;
+    [Tooltip("Segundos de oxigênio recuperados ao coletar")]
+    public float oxygen = 3f;
     public Transform visual;
 
     public bool Collected { get; set; }

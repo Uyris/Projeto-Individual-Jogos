@@ -187,5 +187,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf7d052063adf9a419b678392a52a00a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Collectible
+  kind: 0
   points: 100
+  oxygen: 3
   visual: {fileID: 5296286955804902473}
