@@ -301,6 +301,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   speed: 6
   acceleration: 50
+  dashSpeed: 16
+  dashDuration: 0.18
+  dashCost: 35
+  maxStamina: 100
+  staminaRegen: 25
   maxHealth: 3
   invulnerableTime: 1.5
   knockback: 10

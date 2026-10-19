@@ -689,6 +689,10 @@ public static class GameBuilder
         hud.oxygenText = AddText(hud.oxygenFill.parent.parent, "TextoOxigenio", "60s", pixelFont, 16, UiText, TextAnchor.MiddleCenter,
                                  center, new Vector2(0f, 0f), new Vector2(320f, 30f));
 
+        AddText(b, "RotuloStamina", "DASH", pixelFont, 16, UiMuted, TextAnchor.MiddleRight,
+                right, new Vector2(-626f, -24f), new Vector2(80f, 34f));
+        (hud.staminaFill, hud.staminaFillImage) = AddBar(b, "BarraStamina", right, new Vector2(-250f, -24f), new Vector2(330f, 24f), UiGold);
+
         // ---------- mensagens
         hud.messageText = AddText(root, "Mensagem", "", titleFont, 60, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleCenter,
                                   new Vector2(0.5f, 1f), new Vector2(0f, -240f), new Vector2(1600f, 160f));
@@ -700,7 +704,7 @@ public static class GameBuilder
         // ---------- pausa
         var (pauseRoot, pauseWindow) = AddPanel(root, "PainelPausa", "PAUSADO", Color.white, new Vector2(900f, 680f));
         AddText(pauseWindow, "Dicas",
-                "<color=#ffd23f>MOVER</color>  WASD / SETAS\n<color=#ffd23f>PAUSA</color>  ESC / P",
+                "<color=#ffd23f>MOVER</color>  WASD / SETAS\n<color=#ffd23f>DASH</color>   ESPAÇO / SHIFT\n<color=#ffd23f>PAUSA</color>  ESC / P",
                 bodyFont, 40, UiText, TextAnchor.MiddleCenter, center, new Vector2(0f, 130f), new Vector2(820f, 160f));
         hud.resumeButton = AddButton(pauseWindow, "BotaoContinuar", "CONTINUAR", new Vector2(0f, -40f), new Vector2(520f, 76f));
         hud.pauseRestartButton = AddButton(pauseWindow, "BotaoReiniciar", "REINICIAR", new Vector2(0f, -136f), new Vector2(520f, 76f));

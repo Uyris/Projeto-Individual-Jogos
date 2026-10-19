@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Astronauta controlado pelo jogador: movimento com Rigidbody2D (corrigindo a diagonal),
-/// vida, coleta de itens por trigger e dano ao tocar inimigos.
+/// dash que gasta stamina, vida, coleta de itens por trigger e dano ao tocar inimigos.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
@@ -11,6 +11,13 @@ public class PlayerController : MonoBehaviour
     [Header("Movimento")]
     public float speed = 6f;
     public float acceleration = 50f;
+
+    [Header("Dash (gasta stamina)")]
+    public float dashSpeed = 16f;
+    public float dashDuration = 0.18f;
+    public float dashCost = 35f;
+    public float maxStamina = 100f;
+    public float staminaRegen = 25f;
 
     [Header("Vida")]
     public int maxHealth = 3;
@@ -24,10 +31,13 @@ public class PlayerController : MonoBehaviour
     public AudioClip collectClip;
 
     public int Health { get; private set; }
+    public float Stamina { get; private set; }
+    public bool IsDashing => dashTimer > 0f;
 
     Rigidbody2D rb;
     Vector2 movement;
     Vector2 facing = Vector2.right;
+    float dashTimer;
     float invulnerableTimer;
     float knockbackTimer;
 
@@ -35,6 +45,7 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         Health = maxHealth;
+        Stamina = maxStamina;
     }
 
     void Update()
@@ -49,6 +60,9 @@ public class PlayerController : MonoBehaviour
         // diagonal não fica mais rápido.
         movement = Vector2.ClampMagnitude(GameInput.Move.ReadValue<Vector2>(), 1f);
         if (movement.sqrMagnitude > 0.01f) facing = movement.normalized;
+
+        if (GameInput.Dash.WasPressedThisFrame()) TryDash();
+        if (!IsDashing) Stamina = Mathf.Min(maxStamina, Stamina + staminaRegen * Time.deltaTime);
 
         if (invulnerableTimer > 0f)
         {
@@ -65,6 +79,13 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+        if (IsDashing)
+        {
+            dashTimer -= Time.fixedDeltaTime;
+            rb.linearVelocity = facing * dashSpeed;
+            return;
+        }
+
         if (knockbackTimer > 0f)
         {
             knockbackTimer -= Time.fixedDeltaTime;
@@ -74,6 +95,14 @@ public class PlayerController : MonoBehaviour
         // Tutorial (Movimentando o Jogador): a física move o Rigidbody2D no FixedUpdate.
         Vector2 target = movement * speed;
         rb.linearVelocity = Vector2.MoveTowards(rb.linearVelocity, target, acceleration * Time.fixedDeltaTime);
+    }
+
+    void TryDash()
+    {
+        if (IsDashing || Stamina < dashCost) return;
+
+        Stamina -= dashCost;
+        dashTimer = dashDuration;
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -108,7 +137,8 @@ public class PlayerController : MonoBehaviour
 
     void TakeDamage(Collider2D source)
     {
-        if (invulnerableTimer > 0f || Health <= 0) return;
+        // Durante o dash o astronauta fica invulnerável por um instante.
+        if (invulnerableTimer > 0f || IsDashing || Health <= 0) return;
 
         Health--;
         invulnerableTimer = invulnerableTime;

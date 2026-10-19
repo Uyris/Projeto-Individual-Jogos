@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Interface durante a partida: pontuação, cronômetro, cristais, vida, oxigênio,
+/// Interface durante a partida: pontuação, cronômetro, cristais, vida, oxigênio, stamina,
 /// mensagens e os painéis de pausa, derrota e vitória.
 /// </summary>
 public class HUD : MonoBehaviour
@@ -15,6 +15,8 @@ public class HUD : MonoBehaviour
     public RectTransform oxygenFill;
     public Image oxygenFillImage;
     public Text oxygenText;
+    public RectTransform staminaFill;
+    public Image staminaFillImage;
 
     [Header("Mensagens")]
     public Text messageText;
@@ -39,6 +41,8 @@ public class HUD : MonoBehaviour
 
     static readonly Color OxygenColor = new Color(0.3f, 0.85f, 1f);
     static readonly Color OxygenLowColor = new Color(1f, 0.3f, 0.3f);
+    static readonly Color StaminaColor = new Color(1f, 0.82f, 0.25f);
+    static readonly Color StaminaLowColor = new Color(0.55f, 0.45f, 0.25f);
     static readonly Color HeartColor = new Color(0.91f, 0.21f, 0.29f);
     static readonly Color HeartEmptyColor = new Color(0.23f, 0.25f, 0.32f);
 
@@ -82,6 +86,9 @@ public class HUD : MonoBehaviour
             : (Mathf.Repeat(Time.unscaledTime, 0.5f) < 0.25f ? OxygenLowColor : OxygenLowColor * 0.6f);
         oxygenText.text = $"{Mathf.CeilToInt(gm.Oxygen)}s";
         oxygenText.color = low ? OxygenLowColor : Color.white;
+
+        SetFill(staminaFill, player.Stamina / player.maxStamina);
+        staminaFillImage.color = player.Stamina >= player.dashCost ? StaminaColor : StaminaLowColor;
 
         if (messageTimer > 0f)
         {
