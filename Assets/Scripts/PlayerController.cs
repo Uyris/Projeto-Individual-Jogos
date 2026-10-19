@@ -91,6 +91,10 @@ public class PlayerController : MonoBehaviour
             GameManager.Instance.Collect(item);
             Destroy(other.gameObject);
         }
+        else if (other.CompareTag("Saida"))
+        {
+            GameManager.Instance.ReachExit();
+        }
         else if (other.CompareTag("Inimigo"))
         {
             TakeDamage(other);
@@ -123,6 +127,13 @@ public class PlayerController : MonoBehaviour
     {
         StopPhysics();
         StartCoroutine(ShrinkRoutine(transform.position));
+    }
+
+    /// <summary>Chamado pelo GameManager na vitória: o astronauta entra na cápsula.</summary>
+    public void Escape(Vector3 podPosition)
+    {
+        StopPhysics();
+        StartCoroutine(ShrinkRoutine(podPosition));
     }
 
     void StopPhysics()

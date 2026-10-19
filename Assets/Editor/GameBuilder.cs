@@ -23,11 +23,11 @@ public static class GameBuilder
     const string GameScenePath = SceneDir + "Game.unity";
 
     // Arena com 32 x 16 células de 1 unidade.
-    // # parede | C cristal | O oxigênio | M mina | A alienígena | P jogador
+    // # parede | C cristal | O oxigênio | M mina | A alienígena | P jogador | X cápsula de fuga
     static readonly string[] Map =
     {
         "..C......#..........C.....#.....",
-        ".........#................#.....",
+        ".........#................#..X..",
         "...O.....#..######..####..#.....",
         ".........#..#..........#..##..##",
         "####..####..#...C......#........",
@@ -55,7 +55,7 @@ public static class GameBuilder
     static Font titleFont;
     static PhysicsMaterial2D noFriction;
 
-    static GameObject playerPrefab, crystalPrefab, oxygenPrefab, dronePrefab, alienPrefab, minePrefab;
+    static GameObject playerPrefab, crystalPrefab, oxygenPrefab, dronePrefab, alienPrefab, minePrefab, podPrefab;
 
     [MenuItem("Coletor Estelar/Reconstruir Jogo")]
     public static void BuildFromMenu()
@@ -68,7 +68,7 @@ public static class GameBuilder
         log = new StringBuilder();
         EnsureFolder(PrefabDir);
         EnsureFolder(MaterialDir);
-        EnsureTags("Coletavel", "Inimigo", "Parede");
+        EnsureTags("Coletavel", "Inimigo", "Parede", "Saida");
         ConfigureImporters();
 
         // por enquanto a fonte padrão do Unity
@@ -308,6 +308,16 @@ public static class GameBuilder
         Shape("Visual", mine.transform, "circle", new Color(0.75f, 0.2f, 0.55f), 8, 0.75f);
         minePrefab = SavePrefab(mine);
 
+        // ---------- Cápsula de fuga
+        var pod = new GameObject("CapsulaDeFuga") { tag = "Saida" };
+        var pcol = pod.AddComponent<CircleCollider2D>();
+        pcol.isTrigger = true;
+        pcol.radius = 0.5f;
+        GameObject podVisual = Shape("Visual", pod.transform, "circle", Color.white, 4, 1.4f);
+        var exit = pod.AddComponent<ExitPod>();
+        exit.body = podVisual.GetComponent<SpriteRenderer>();
+        podPrefab = SavePrefab(pod);
+
         log.AppendLine("Prefabs criados.");
     }
 
@@ -330,6 +340,7 @@ public static class GameBuilder
 
         // zonas pintadas no chão (sprite básico com a cor trocada)
         CreateZone(arena, "ZonaInicial", new Vector2(-12f, -5.5f), new Vector2(8f, 6f), new Color(0.3f, 0.6f, 1f, 0.07f));
+        CreateZone(arena, "ZonaDeFuga", new Vector2(13.5f, 6f), new Vector2(5f, 3f), new Color(0.3f, 1f, 0.5f, 0.07f));
 
         Transform walls = new GameObject("Paredes").transform;
         walls.SetParent(arena, false);
@@ -343,6 +354,7 @@ public static class GameBuilder
         Transform items = new GameObject("Coletaveis").transform;
         Transform enemies = new GameObject("Inimigos").transform;
         GameObject playerGO = null;
+        GameObject podGO = null;
         var alienPatrols = new List<Vector2[]>
         {
             new[] { new Vector2(-1.5f, 3.5f), new Vector2(5.5f, 3.5f), new Vector2(5.5f, 1.5f), new Vector2(-1.5f, 1.5f) },
@@ -361,6 +373,7 @@ public static class GameBuilder
                     case 'O': Place(oxygenPrefab, p, items); break;
                     case 'M': Place(minePrefab, p, enemies); break;
                     case 'P': playerGO = Place(playerPrefab, p, null); break;
+                    case 'X': podGO = Place(podPrefab, p, null); break;
                     case 'A':
                         GameObject alien = Place(alienPrefab, p, enemies);
                         alien.GetComponent<ChaserEnemy>().patrolPoints = alienPatrols[alienIndex++ % alienPatrols.Count];
@@ -376,6 +389,13 @@ public static class GameBuilder
         CreateDrone(enemies, 3f, true, new Vector2(-6.5f, -7f), new Vector2(8f, -7f));
         CreateDrone(enemies, 2.8f, false, new Vector2(9f, 3f), new Vector2(15f, 3f), new Vector2(15f, 1f), new Vector2(9f, 1f));
 
+        // lasers temporizados
+        Transform lasers = new GameObject("Lasers").transform;
+        CreateLaser(lasers, new Vector2(-1.5f, 7.5f), new Vector2(-1.5f, 5.5f), 0f);
+        CreateLaser(lasers, new Vector2(5.5f, 7.5f), new Vector2(5.5f, 5.5f), 1.7f);
+        CreateLaser(lasers, new Vector2(12f, 4f), new Vector2(14f, 4f), 0.9f);
+        CreateLaser(lasers, new Vector2(0f, 0f), new Vector2(2f, 0f), 0.4f);
+
         // ---------- Gerenciadores e HUD
         HUD hud = BuildHud();
         CreateEventSystem();
@@ -383,6 +403,7 @@ public static class GameBuilder
         var managers = new GameObject("GameManager");
         var gm = managers.AddComponent<GameManager>();
         gm.player = playerGO.GetComponent<PlayerController>();
+        gm.exitPod = podGO.GetComponent<ExitPod>();
         gm.hud = hud;
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), GameScenePath);
@@ -449,6 +470,38 @@ public static class GameBuilder
         patrol.waypoints = waypoints;
         patrol.speed = speed;
         patrol.pingPong = pingPong;
+    }
+
+    static void CreateLaser(Transform parent, Vector2 a, Vector2 b, float offset)
+    {
+        var root = new GameObject("Laser");
+        root.transform.SetParent(parent, false);
+        root.transform.position = (a + b) * 0.5f;
+
+        Vector2 d = b - a;
+        float angle = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+
+        GameObject beam = NewSprite("Feixe", root.transform, Spr("square"), 7);
+        beam.tag = "Inimigo";
+        beam.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+        beam.transform.localScale = new Vector3(d.magnitude, 0.22f, 1f);
+        var beamRenderer = beam.GetComponent<SpriteRenderer>();
+        beamRenderer.color = new Color(1f, 0.2f, 0.28f);
+        var beamCollider = beam.AddComponent<BoxCollider2D>();
+        beamCollider.isTrigger = true;
+        beamCollider.size = new Vector2(1f, 1.4f);
+
+        GameObject e1 = Shape("EmissorA", root.transform, "square", new Color(0.45f, 0.5f, 0.6f), 8, 0.5f);
+        e1.transform.position = a;
+        e1.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        GameObject e2 = Shape("EmissorB", root.transform, "square", new Color(0.45f, 0.5f, 0.6f), 8, 0.5f);
+        e2.transform.position = b;
+        e2.transform.rotation = Quaternion.Euler(0f, 0f, angle + 180f);
+
+        var gate = root.AddComponent<LaserGate>();
+        gate.beam = beamRenderer;
+        gate.beamCollider = beamCollider;
+        gate.timeOffset = offset;
     }
 
     static Camera CreateCamera(Vector3 position, float size)
@@ -636,6 +689,14 @@ public static class GameBuilder
         hud.oxygenText = AddText(hud.oxygenFill.parent.parent, "TextoOxigenio", "60s", pixelFont, 16, UiText, TextAnchor.MiddleCenter,
                                  center, new Vector2(0f, 0f), new Vector2(320f, 30f));
 
+        // ---------- mensagens
+        hud.messageText = AddText(root, "Mensagem", "", titleFont, 60, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleCenter,
+                                  new Vector2(0.5f, 1f), new Vector2(0f, -240f), new Vector2(1600f, 160f));
+        hud.messageText.lineSpacing = 0.9f;
+        var outline = hud.messageText.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.9f);
+        outline.effectDistance = new Vector2(3f, -3f);
+
         // ---------- pausa
         var (pauseRoot, pauseWindow) = AddPanel(root, "PainelPausa", "PAUSADO", Color.white, new Vector2(900f, 680f));
         AddText(pauseWindow, "Dicas",
@@ -658,7 +719,7 @@ public static class GameBuilder
         hud.gameOverPanel = overRoot;
 
         // ---------- vitória
-        var (winRoot, winWindow) = AddPanel(root, "PainelVitoria", "VOCÊ VENCEU!", new Color(0.45f, 1f, 0.6f), new Vector2(900f, 740f));
+        var (winRoot, winWindow) = AddPanel(root, "PainelVitoria", "VOCÊ ESCAPOU!", new Color(0.45f, 1f, 0.6f), new Vector2(900f, 740f));
         hud.victoryStatsText = AddText(winWindow, "Resumo", "", titleFont, 48, UiText, TextAnchor.MiddleCenter,
                                        center, new Vector2(0f, 130f), new Vector2(560f, 200f));
         hud.victoryStatsText.lineSpacing = 1f;

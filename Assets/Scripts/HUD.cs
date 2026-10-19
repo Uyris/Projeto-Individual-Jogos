@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Interface durante a partida: pontuação, cronômetro, cristais, vida, oxigênio
-/// e os painéis de pausa, derrota e vitória.
+/// Interface durante a partida: pontuação, cronômetro, cristais, vida, oxigênio,
+/// mensagens e os painéis de pausa, derrota e vitória.
 /// </summary>
 public class HUD : MonoBehaviour
 {
@@ -15,6 +15,9 @@ public class HUD : MonoBehaviour
     public RectTransform oxygenFill;
     public Image oxygenFillImage;
     public Text oxygenText;
+
+    [Header("Mensagens")]
+    public Text messageText;
 
     [Header("Painéis")]
     public GameObject pausePanel;
@@ -39,6 +42,8 @@ public class HUD : MonoBehaviour
     static readonly Color HeartColor = new Color(0.91f, 0.21f, 0.29f);
     static readonly Color HeartEmptyColor = new Color(0.23f, 0.25f, 0.32f);
 
+    float messageTimer;
+
     void Start()
     {
         GameManager gm = GameManager.Instance;
@@ -53,6 +58,7 @@ public class HUD : MonoBehaviour
         pausePanel.SetActive(false);
         gameOverPanel.SetActive(false);
         victoryPanel.SetActive(false);
+        messageText.text = "";
     }
 
     void Update()
@@ -60,6 +66,7 @@ public class HUD : MonoBehaviour
         GameManager gm = GameManager.Instance;
         if (gm == null) return;
         PlayerController player = gm.player;
+        float dt = Time.unscaledDeltaTime;
 
         scoreText.text = gm.Score.ToString("00000");
 
@@ -75,11 +82,28 @@ public class HUD : MonoBehaviour
             : (Mathf.Repeat(Time.unscaledTime, 0.5f) < 0.25f ? OxygenLowColor : OxygenLowColor * 0.6f);
         oxygenText.text = $"{Mathf.CeilToInt(gm.Oxygen)}s";
         oxygenText.color = low ? OxygenLowColor : Color.white;
+
+        if (messageTimer > 0f)
+        {
+            messageTimer -= dt;
+            Color c = messageText.color;
+            c.a = Mathf.Clamp01(messageTimer * 2f);
+            messageText.color = c;
+        }
     }
 
     static void SetFill(RectTransform fill, float amount)
     {
         fill.anchorMax = new Vector2(Mathf.Clamp01(amount), 1f);
+    }
+
+    public void ShowMessage(string message, float duration)
+    {
+        messageText.text = message;
+        messageTimer = duration;
+        Color c = messageText.color;
+        c.a = 1f;
+        messageText.color = c;
     }
 
     public void ShowPause(bool show)
@@ -89,6 +113,7 @@ public class HUD : MonoBehaviour
 
     public void ShowGameOver(string reason, float time, int score, int crystals, int totalCrystals)
     {
+        messageText.text = "";
         gameOverReasonText.text = reason;
         gameOverStatsText.text =
             $"TEMPO FINAL: {GameManager.FormatTime(time)}\n" +
@@ -99,6 +124,7 @@ public class HUD : MonoBehaviour
 
     public void ShowVictory(float time, int score, int oxygenBonus, int healthBonus, bool newRecord, float bestTime)
     {
+        messageText.text = "";
         victoryStatsText.text =
             $"TEMPO FINAL: {GameManager.FormatTime(time)}\n" +
             $"BÔNUS DE OXIGÊNIO: +{oxygenBonus}\n" +

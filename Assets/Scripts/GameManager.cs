@@ -30,6 +30,7 @@ public class GameManager : MonoBehaviour
     [Header("Referências")]
     public PlayerController player;
     public HUD hud;
+    public ExitPod exitPod;
 
     public State CurrentState { get; private set; }
     public float ElapsedTime { get; private set; }
@@ -37,6 +38,8 @@ public class GameManager : MonoBehaviour
     public int Score { get; private set; }
     public int CrystalsCollected { get; private set; }
     public int TotalCrystals { get; private set; }
+
+    float exitHintCooldown;
 
     void Awake()
     {
@@ -66,6 +69,7 @@ public class GameManager : MonoBehaviour
             else if (CurrentState == State.Paused) Resume();
         }
 
+        exitHintCooldown -= Time.deltaTime;
         if (CurrentState != State.Playing) return;
 
         // Cronômetro da partida e oxigênio que acaba com o tempo.
@@ -86,13 +90,31 @@ public class GameManager : MonoBehaviour
 
         if (item.kind == Collectible.Kind.Oxygen)
         {
+            hud.ShowMessage($"+{item.oxygen:0}s DE OXIGÊNIO", 1.5f);
             return;
         }
 
         CrystalsCollected++;
         if (CrystalsCollected >= TotalCrystals)
         {
+            exitPod.Unlock();
+            hud.ShowMessage("CÁPSULA DE FUGA LIBERADA!\nCORRA ATÉ ELA!", 3f);
+        }
+    }
+
+    public void ReachExit()
+    {
+        if (CurrentState != State.Playing) return;
+
+        if (exitPod.IsOpen)
+        {
             Win();
+        }
+        else if (exitHintCooldown <= 0f)
+        {
+            int missing = TotalCrystals - CrystalsCollected;
+            hud.ShowMessage($"CÁPSULA TRANCADA!\nFALTAM {missing} CRISTAIS", 2f);
+            exitHintCooldown = 2.5f;
         }
     }
 
@@ -115,6 +137,8 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.SetFloat(BestTimeKey, bestTime);
         if (Score > PlayerPrefs.GetInt(BestScoreKey, 0)) PlayerPrefs.SetInt(BestScoreKey, Score);
         PlayerPrefs.Save();
+
+        player.Escape(exitPod.transform.position);
 
         float time = ElapsedTime;
         int score = Score;

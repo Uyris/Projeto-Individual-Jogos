@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Item coletável (prefab). Cristais dão pontos; tanques recuperam oxigênio.
+/// Item coletável (prefab). Cristais liberam a saída; tanques recuperam oxigênio.
 /// A detecção é feita pelo jogador através da tag "Coletavel".
 /// </summary>
 public class Collectible : MonoBehaviour
