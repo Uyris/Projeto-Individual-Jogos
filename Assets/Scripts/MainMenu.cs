@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -24,6 +25,13 @@ public class MainMenu : MonoBehaviour
 
     void Play()
     {
+        StartCoroutine(LoadGame());
+    }
+
+    IEnumerator LoadGame()
+    {
+        playButton.interactable = false;
+        yield return new WaitForSecondsRealtime(0.15f);
         SceneManager.LoadScene(gameScene);
     }
 }

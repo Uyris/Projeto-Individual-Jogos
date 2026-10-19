@@ -30,6 +30,9 @@ public class PlayerController : MonoBehaviour
     public TrailRenderer dashTrail;
     public AudioSource audioSource;
     public AudioClip collectClip;
+    public AudioClip oxygenClip;
+    public AudioClip hurtClip;
+    public AudioClip dashClip;
     public ParticleSystem collectFx;
     public ParticleSystem hurtFx;
 
@@ -116,6 +119,7 @@ public class PlayerController : MonoBehaviour
             dashTrail.Clear();
             dashTrail.emitting = true;
         }
+        audioSource.PlayOneShot(dashClip, 0.8f);
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -129,7 +133,7 @@ public class PlayerController : MonoBehaviour
             if (item == null || item.Collected) return;
 
             item.Collected = true;
-            audioSource.PlayOneShot(collectClip);
+            audioSource.PlayOneShot(item.kind == Collectible.Kind.Oxygen ? oxygenClip : collectClip);
             SpawnFx(collectFx, other.transform.position, item.fxColor);
             GameManager.Instance.Collect(item);
             Destroy(other.gameObject);
@@ -163,6 +167,7 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = away.normalized * knockback;
         knockbackTimer = 0.2f;
 
+        audioSource.PlayOneShot(hurtClip);
         SpawnFx(hurtFx, transform.position, new Color(1f, 0.4f, 0.35f));
         CameraController.Shake(0.25f, 0.3f);
         GameManager.Instance.PlayerHurt(Health);

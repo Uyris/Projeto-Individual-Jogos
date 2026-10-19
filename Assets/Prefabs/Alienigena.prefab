@@ -306,6 +306,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 5197656665798420519}
   body: {fileID: 8376365017947592765}
   alertIcon: {fileID: 8932086409361867009}
+  alertClip: {fileID: 8300000, guid: ac70d62b28b345c43b96fc2f45346d11, type: 3}
 --- !u!114 &1327677868091030786
 MonoBehaviour:
   m_ObjectHideFlags: 0

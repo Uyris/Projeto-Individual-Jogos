@@ -21,6 +21,7 @@ public class ChaserEnemy : MonoBehaviour
     public Collider2D bodyCollider;
     public SpriteRenderer body;
     public GameObject alertIcon;
+    public AudioClip alertClip;
 
     static readonly RaycastHit2D[] Hits = new RaycastHit2D[8];
     static readonly Color ChaseTint = new Color(1f, 0.55f, 0.55f);
@@ -64,6 +65,7 @@ public class ChaserEnemy : MonoBehaviour
 
         if (seesPlayer)
         {
+            if (mode != Mode.Chase) AudioManager.PlaySfx(alertClip, 0.7f);
             mode = Mode.Chase;
             lastSeen = playerPos;
         }

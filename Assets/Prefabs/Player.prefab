@@ -527,6 +527,9 @@ MonoBehaviour:
   dashTrail: {fileID: 1185453191845371503}
   audioSource: {fileID: 121204835369419520}
   collectClip: {fileID: 8300000, guid: f7e0b18e01b949c45af8fe7851c3a67a, type: 3}
+  oxygenClip: {fileID: 8300000, guid: 26dd5f70ac2777a498a1f7000ec3966b, type: 3}
+  hurtClip: {fileID: 8300000, guid: a47e31e7e3357294cab5632537ca17cc, type: 3}
+  dashClip: {fileID: 8300000, guid: 14da545634a3d614fb55bb40be4beb34, type: 3}
   collectFx: {fileID: 6484160190672922643, guid: e930cf739641d5b46b61b39df763e4b5, type: 3}
   hurtFx: {fileID: 3282717507962931518, guid: b70588fae228fd74e8f8d16ac107d03e, type: 3}
 --- !u!1 &7308544287805031658

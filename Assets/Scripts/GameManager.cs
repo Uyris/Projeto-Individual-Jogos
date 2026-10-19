@@ -32,6 +32,12 @@ public class GameManager : MonoBehaviour
     public HUD hud;
     public ExitPod exitPod;
 
+    [Header("Sons")]
+    public AudioClip unlockClip;
+    public AudioClip alarmClip;
+    public AudioClip victoryClip;
+    public AudioClip gameOverClip;
+
     public State CurrentState { get; private set; }
     public float ElapsedTime { get; private set; }
     public float Oxygen { get; private set; }
@@ -39,6 +45,7 @@ public class GameManager : MonoBehaviour
     public int CrystalsCollected { get; private set; }
     public int TotalCrystals { get; private set; }
 
+    float alarmTimer;
     float exitHintCooldown;
 
     void Awake()
@@ -76,6 +83,16 @@ public class GameManager : MonoBehaviour
         ElapsedTime += Time.deltaTime;
         Oxygen -= Time.deltaTime;
 
+        if (Oxygen <= lowOxygen)
+        {
+            alarmTimer -= Time.deltaTime;
+            if (alarmTimer <= 0f)
+            {
+                AudioManager.PlaySfx(alarmClip, 0.6f);
+                alarmTimer = 1f;
+            }
+        }
+
         if (Oxygen <= 0f)
         {
             Oxygen = 0f;
@@ -98,6 +115,7 @@ public class GameManager : MonoBehaviour
         if (CrystalsCollected >= TotalCrystals)
         {
             exitPod.Unlock();
+            AudioManager.PlaySfx(unlockClip);
             hud.ShowMessage("CÁPSULA DE FUGA LIBERADA!\nCORRA ATÉ ELA!", 3f);
         }
     }
@@ -139,6 +157,8 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.Save();
 
         player.Escape(exitPod.transform.position);
+        AudioManager.StopMusic();
+        AudioManager.PlaySfx(victoryClip);
 
         float time = ElapsedTime;
         int score = Score;
@@ -152,6 +172,8 @@ public class GameManager : MonoBehaviour
 
         player.Die();
         CameraController.Shake(0.4f, 0.4f);
+        AudioManager.StopMusic();
+        AudioManager.PlaySfx(gameOverClip);
 
         StartCoroutine(EndRoutine(() => hud.ShowGameOver(reason, ElapsedTime, Score, CrystalsCollected, TotalCrystals)));
     }
@@ -168,6 +190,7 @@ public class GameManager : MonoBehaviour
         if (CurrentState != State.Playing) return;
         CurrentState = State.Paused;
         Time.timeScale = 0f;
+        AudioManager.DuckMusic(true);
         hud.ShowPause(true);
     }
 
@@ -176,21 +199,24 @@ public class GameManager : MonoBehaviour
         if (CurrentState != State.Paused) return;
         CurrentState = State.Playing;
         Time.timeScale = 1f;
+        AudioManager.DuckMusic(false);
         hud.ShowPause(false);
     }
 
     public void Restart()
     {
-        LoadScene(SceneManager.GetActiveScene().name);
+        StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
     }
 
     public void GoToMenu()
     {
-        LoadScene(MenuScene);
+        StartCoroutine(LoadSceneRoutine(MenuScene));
     }
 
-    static void LoadScene(string scene)
+    static IEnumerator LoadSceneRoutine(string scene)
     {
+        // pequena espera para o som do clique tocar antes de trocar de cena
+        yield return new WaitForSecondsRealtime(0.12f);
         Time.timeScale = 1f;
         SceneManager.LoadScene(scene);
     }

@@ -166,6 +166,7 @@ public static class GameBuilder
 
     static Sprite Spr(string name) => Load<Sprite>(ArtDir + "Sprites/" + name + ".png");
     static AudioClip Sfx(string name) => Load<AudioClip>(AudioDir + "SFX/" + name + ".wav");
+    static AudioClip Music(string name) => Load<AudioClip>(AudioDir + "Music/" + name + ".wav");
     // sprites padrão da interface do Unity, até a interface ganhar arte própria
     static Sprite DefaultUi(string file) => AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/" + file);
 
@@ -381,6 +382,9 @@ public static class GameBuilder
         pc.dashTrail = trail;
         pc.audioSource = audio;
         pc.collectClip = Sfx("collect");
+        pc.oxygenClip = Sfx("oxygen");
+        pc.hurtClip = Sfx("hurt");
+        pc.dashClip = Sfx("dash");
         pc.collectFx = collectFxPrefab.GetComponent<ParticleSystem>();
         pc.hurtFx = hurtFxPrefab.GetComponent<ParticleSystem>();
         playerPrefab = SavePrefab(player);
@@ -453,6 +457,7 @@ public static class GameBuilder
         chaser.bodyCollider = bodyCollider;
         chaser.body = alienVisual.GetComponent<SpriteRenderer>();
         chaser.alertIcon = alert;
+        chaser.alertClip = Sfx("alert");
         AddPointLight(alien, new Color(0.5f, 1f, 0.45f), 1.6f, 0.5f);
         alienPrefab = SavePrefab(alien);
 
@@ -587,6 +592,11 @@ public static class GameBuilder
         gm.player = playerGO.GetComponent<PlayerController>();
         gm.exitPod = podGO.GetComponent<ExitPod>();
         gm.hud = hud;
+        gm.unlockClip = Sfx("unlock");
+        gm.alarmClip = Sfx("alarm");
+        gm.victoryClip = Sfx("victory");
+        gm.gameOverClip = Sfx("gameover");
+        AddAudioManager(managers, Music("music_game"), 0.4f);
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), GameScenePath);
         log.AppendLine($"Cena do jogo salva ({wallCount} blocos de parede internos).");
@@ -701,6 +711,19 @@ public static class GameBuilder
         return cam;
     }
 
+    static void AddAudioManager(GameObject go, AudioClip music, float volume)
+    {
+        var am = go.AddComponent<AudioManager>();
+        am.musicSource = go.AddComponent<AudioSource>();
+        am.musicSource.playOnAwake = false;
+        am.sfxSource = go.AddComponent<AudioSource>();
+        am.sfxSource.playOnAwake = false;
+        am.music = music;
+        am.musicVolume = volume;
+        am.clickClip = Sfx("click");
+        am.selectClip = Sfx("select");
+    }
+
     static void CreateEventSystem()
     {
         var go = new GameObject("EventSystem", typeof(EventSystem));
@@ -787,6 +810,7 @@ public static class GameBuilder
         Text text = AddText(image.transform, "Texto", label, titleFont, fontSize, Color.white, TextAnchor.MiddleCenter,
                             new Vector2(0.5f, 0.5f), new Vector2(0f, 3f), size);
         text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        image.gameObject.AddComponent<UIButtonSound>();
         return button;
     }
 
@@ -929,6 +953,9 @@ public static class GameBuilder
     {
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         CreateCamera(new Vector3(0f, 0f, -10f), 5f);
+
+        var managers = new GameObject("AudioManager");
+        AddAudioManager(managers, Music("music_menu"), 0.5f);
 
         Canvas canvas = CreateCanvas("Menu", 0);
         Transform root = canvas.transform;

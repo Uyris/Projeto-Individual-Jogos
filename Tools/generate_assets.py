@@ -1,8 +1,8 @@
 """
 Gerador procedural dos assets do jogo "Coletor Estelar".
 
-Gera os sprites do jogo (pixel art) e o som de coleta (síntese chiptune),
-então não há dependência de assets de terceiros.
+Todos os sprites (pixel art) e sons/músicas (síntese chiptune) do jogo são
+gerados por este script, então não há dependência de assets de terceiros.
 
 Uso:  python Tools/generate_assets.py
 Requer: numpy, Pillow
@@ -17,8 +17,9 @@ from PIL import Image, ImageDraw
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPR = os.path.join(ROOT, "Assets", "Art", "Sprites")
 BG = os.path.join(ROOT, "Assets", "Art", "Backgrounds")
+MUS = os.path.join(ROOT, "Assets", "Audio", "Music")
 SFX = os.path.join(ROOT, "Assets", "Audio", "SFX")
-for d in (SPR, BG, SFX):
+for d in (SPR, BG, MUS, SFX):
     os.makedirs(d, exist_ok=True)
 
 rng = np.random.default_rng(7)
@@ -407,6 +408,41 @@ def osc(kind, freq, n, duty=0.5, vib=0.0, vib_rate=5.5, phase0=0.0):
     return np.sin(2 * np.pi * ph).astype(np.float32)
 
 
+def sweep(kind, f0, f1, n, duty=0.5, curve=1.0):
+    k = np.linspace(0, 1, n) ** curve
+    f = f0 + (f1 - f0) * k
+    ph = np.cumsum(f) / SR % 1.0
+    if kind == "pulse":
+        return np.where(ph < duty, 1.0, -1.0).astype(np.float32)
+    if kind == "tri":
+        return (4 * np.abs(ph - 0.5) - 1).astype(np.float32)
+    return np.sin(2 * np.pi * ph).astype(np.float32)
+
+
+def noise(n, hp=False):
+    x = rng.uniform(-1, 1, n).astype(np.float32)
+    if hp:
+        x = np.diff(np.concatenate([[0], x])).astype(np.float32) * 0.6
+    return x
+
+
+def lowpass(x, a=0.2):
+    y = np.zeros_like(x)
+    acc = 0.0
+    for i in range(len(x)):
+        acc += a * (x[i] - acc)
+        y[i] = acc
+    return y
+
+
+def mix_into(buf, sig, start):
+    end = start + len(sig)
+    if end > len(buf):
+        sig = sig[: len(buf) - start]
+        end = len(buf)
+    buf[start:end] += sig
+
+
 def write_wav(path, sig, peak=0.89):
     m = np.max(np.abs(sig)) or 1
     s = (sig / m * peak * 32767).astype(np.int16)
@@ -422,14 +458,201 @@ def note(kind, n_midi, dur, vol, duty=0.5, a=0.005, d=0.08, s=0.6, r=0.04, vib=0
     return osc(kind, midi(n_midi), n, duty, vib) * env(n, a, d, s, r) * vol
 
 
+def kick(vol=0.9):
+    n = int(0.16 * SR)
+    return sweep("sine", 150, 42, n, curve=0.4) * np.exp(-np.linspace(0, 7, n)) * vol
+
+
+def snare(vol=0.5):
+    n = int(0.14 * SR)
+    return (noise(n) * 0.8 + sweep("tri", 220, 160, n) * 0.4) * np.exp(-np.linspace(0, 9, n)) * vol
+
+
+def hat(vol=0.18, length=0.04):
+    n = int(length * SR)
+    return noise(n, hp=True) * np.exp(-np.linspace(0, 6, n)) * vol
+
+
+CHORDS = {
+    "Am": [57, 60, 64], "F": [53, 57, 60], "C": [48, 52, 55], "G": [55, 59, 62],
+    "E": [52, 56, 59], "Dm": [50, 53, 57],
+}
+
+
+def game_music():
+    bpm = 132
+    six = 60 / bpm / 4
+    prog = ["Am", "F", "C", "G", "Am", "F", "G", "E"] * 2
+    bars = len(prog)
+    total = int(bars * 16 * six * SR)
+    buf = np.zeros(total + SR * 2, np.float32)
+    melody = [
+        [(69, 4), (72, 2), (76, 2), (74, 2), (72, 2), (69, 4)],
+        [(72, 4), (69, 2), (65, 2), (69, 4), (72, 4)],
+        [(76, 4), (79, 2), (76, 2), (74, 2), (72, 2), (67, 4)],
+        [(74, 6), (71, 2), (67, 4), (74, 4)],
+        [(76, 2), (76, 2), (81, 4), (79, 2), (76, 2), (74, 4)],
+        [(72, 2), (74, 2), (76, 4), (77, 4), (76, 4)],
+        [(74, 4), (71, 4), (67, 2), (69, 2), (71, 4)],
+        [(68, 4), (71, 4), (76, 8)],
+    ]
+    for b, ch in enumerate(prog):
+        bar0 = b * 16 * six
+        root = CHORDS[ch][0] - 12
+        tones = CHORDS[ch]
+        # baixo
+        pat = [0, 0, 12, 0, 7, 0, 12, 7]
+        for k, off in enumerate(pat):
+            st = int((bar0 + k * 2 * six) * SR)
+            mix_into(buf, note("pulse", root + off - 12 if off == 0 and k == 0 else root + off, 2 * six * 0.9, 0.30,
+                               duty=0.5, d=0.05, s=0.5, r=0.03), st)
+        # arpejo
+        arp = [tones[0], tones[1], tones[2], tones[0] + 12]
+        for k in range(16):
+            st = int((bar0 + k * six) * SR)
+            mix_into(buf, note("pulse", arp[k % 4] + 12, six * 0.8, 0.075 if b < 8 else 0.095, duty=0.125,
+                               d=0.04, s=0.3, r=0.02), st)
+        # bateria
+        for k in range(16):
+            st = int((bar0 + k * six) * SR)
+            if k in (0, 8) or (k == 10 and b % 2):
+                mix_into(buf, kick(), st)
+            if k in (4, 12):
+                mix_into(buf, snare(), st)
+            if k % 2 == 0:
+                mix_into(buf, hat(0.13 if k % 4 else 0.18), st)
+            if k == 14:
+                mix_into(buf, hat(0.12, 0.12), st)
+        if b % 8 == 7:  # virada
+            for k in (13, 14, 15):
+                mix_into(buf, snare(0.35), int((bar0 + k * six) * SR))
+        # melodia
+        t = bar0
+        for (n_, l) in melody[b % 8]:
+            st = int(t * SR)
+            dur = l * six
+            mix_into(buf, note("pulse", n_, dur * 0.95, 0.16, duty=0.25, a=0.01, d=0.1, s=0.7, r=0.05,
+                               vib=0.004 if l >= 4 else 0), st)
+            if b >= 8:
+                mix_into(buf, note("pulse", n_ - 12, dur * 0.95, 0.07, duty=0.5, a=0.01, d=0.1, s=0.6, r=0.05), st)
+            t += dur
+    out = buf[:total].copy()
+    out[: len(buf) - total] += buf[total:]
+    return out
+
+
+def menu_music():
+    bpm = 84
+    beat = 60 / bpm
+    prog = ["Am", "F", "C", "G", "Am", "F", "Dm", "E"]
+    total = int(len(prog) * 4 * beat * SR)
+    buf = np.zeros(total + SR * 4, np.float32)
+    for b, ch in enumerate(prog):
+        bar0 = b * 4 * beat
+        tones = CHORDS[ch]
+        st = int(bar0 * SR)
+        n = int(4 * beat * SR * 1.15)
+        for tn in tones:
+            sig = (osc("tri", midi(tn), n, vib=0.003, vib_rate=4) * 0.6 +
+                   osc("sine", midi(tn + 12), n) * 0.25) * env(n, a=0.6, d=0.5, s=0.8, r=0.9) * 0.16
+            mix_into(buf, sig, st)
+        mix_into(buf, note("tri", tones[0] - 12, 4 * beat * 0.95, 0.30, a=0.05, d=0.4, s=0.7, r=0.3), st)
+        arp = [tones[0] + 12, tones[1] + 12, tones[2] + 12, tones[0] + 24, tones[2] + 12, tones[1] + 12, tones[0] + 12, tones[2]]
+        for k in range(8):
+            s0 = int((bar0 + k * beat / 2) * SR)
+            n2 = int(beat * 1.6 * SR)
+            sig = osc("sine", midi(arp[k]), n2) * np.exp(-np.linspace(0, 5, n2)) * 0.11
+            sig += osc("sine", midi(arp[k]) * 2.01, n2) * np.exp(-np.linspace(0, 9, n2)) * 0.03
+            mix_into(buf, sig, s0)
+    out = buf[:total].copy()
+    out[: len(buf) - total] += buf[total:]
+    return out
+
+
 def sfx_collect():
     a = note("pulse", 88, 0.06, 0.5, duty=0.25, d=0.02, s=0.8, r=0.01)
     b = note("pulse", 93, 0.12, 0.5, duty=0.25, d=0.05, s=0.6, r=0.06)
     return np.concatenate([a, b])
 
 
+def sfx_oxygen():
+    n = int(0.35 * SR)
+    s = sweep("sine", 400, 1100, n, curve=0.7) * (0.6 + 0.4 * np.sin(np.linspace(0, 40, n)))
+    return s * env(n, 0.01, 0.1, 0.7, 0.12) * 0.6
+
+
+def sfx_hurt():
+    n = int(0.32 * SR)
+    s = sweep("pulse", 420, 90, n, duty=0.5, curve=0.6) * 0.5 + noise(n) * 0.35 * np.exp(-np.linspace(0, 6, n))
+    return s * env(n, 0.002, 0.1, 0.6, 0.12)
+
+
+def sfx_dash():
+    n = int(0.22 * SR)
+    s = lowpass(noise(n), 0.35) * 1.6 + sweep("sine", 300, 900, n) * 0.15
+    return s * np.sin(np.linspace(0, np.pi, n)) * 0.7
+
+
+def sfx_unlock():
+    out = np.zeros(int(0.9 * SR), np.float32)
+    for k, n_ in enumerate([72, 76, 79, 84]):
+        mix_into(out, note("pulse", n_, 0.35 if k == 3 else 0.12, 0.35, duty=0.25, d=0.05, s=0.6, r=0.1, vib=0.004 if k == 3 else 0), int(k * 0.09 * SR))
+    mix_into(out, note("tri", 60, 0.6, 0.35, a=0.01, d=0.2, s=0.6, r=0.2), int(0.27 * SR))
+    return out
+
+
+def sfx_victory():
+    out = np.zeros(int(2.2 * SR), np.float32)
+    seq = [(72, 0.0, 0.12), (76, 0.12, 0.12), (79, 0.24, 0.12), (84, 0.36, 0.3), (79, 0.7, 0.12), (84, 0.84, 0.9)]
+    for n_, t0, d in seq:
+        mix_into(out, note("pulse", n_, d, 0.32, duty=0.25, d=0.05, s=0.7, r=0.08, vib=0.005 if d > 0.5 else 0), int(t0 * SR))
+        mix_into(out, note("pulse", n_ - 12, d, 0.14, duty=0.5, d=0.05, s=0.6, r=0.08), int(t0 * SR))
+    for tn in (48, 52, 55):
+        mix_into(out, note("tri", tn, 1.2, 0.2, a=0.02, d=0.3, s=0.7, r=0.4), int(0.84 * SR))
+    return out
+
+
+def sfx_gameover():
+    out = np.zeros(int(2.0 * SR), np.float32)
+    for k, n_ in enumerate([67, 66, 65, 64]):
+        d = 0.9 if k == 3 else 0.28
+        mix_into(out, note("pulse", n_, d, 0.32, duty=0.5, d=0.1, s=0.7, r=0.15, vib=0.008 if k == 3 else 0), int(k * 0.3 * SR))
+        mix_into(out, note("tri", n_ - 24, d, 0.3, d=0.1, s=0.7, r=0.15), int(k * 0.3 * SR))
+    return out
+
+
+def sfx_click():
+    return note("pulse", 84, 0.05, 0.4, duty=0.5, d=0.02, s=0.4, r=0.02)
+
+
+def sfx_select():
+    return note("pulse", 79, 0.035, 0.25, duty=0.25, d=0.01, s=0.4, r=0.015)
+
+
+def sfx_alarm():
+    a = note("pulse", 81, 0.1, 0.35, duty=0.5, d=0.02, s=0.8, r=0.02)
+    return np.concatenate([a, np.zeros(int(0.04 * SR), np.float32), note("pulse", 76, 0.1, 0.35, d=0.02, s=0.8, r=0.03)])
+
+
+def sfx_alert():
+    a = note("pulse", 86, 0.05, 0.35, duty=0.25, d=0.01, s=0.8, r=0.01)
+    return np.concatenate([a, np.zeros(int(0.03 * SR), np.float32), a])
+
+
 def build_audio():
+    write_wav(os.path.join(MUS, "music_game.wav"), game_music(), 0.8)
+    write_wav(os.path.join(MUS, "music_menu.wav"), menu_music(), 0.75)
     write_wav(os.path.join(SFX, "collect.wav"), sfx_collect())
+    write_wav(os.path.join(SFX, "oxygen.wav"), sfx_oxygen())
+    write_wav(os.path.join(SFX, "hurt.wav"), sfx_hurt())
+    write_wav(os.path.join(SFX, "dash.wav"), sfx_dash(), 0.6)
+    write_wav(os.path.join(SFX, "unlock.wav"), sfx_unlock())
+    write_wav(os.path.join(SFX, "victory.wav"), sfx_victory())
+    write_wav(os.path.join(SFX, "gameover.wav"), sfx_gameover())
+    write_wav(os.path.join(SFX, "click.wav"), sfx_click(), 0.6)
+    write_wav(os.path.join(SFX, "select.wav"), sfx_select(), 0.4)
+    write_wav(os.path.join(SFX, "alarm.wav"), sfx_alarm(), 0.6)
+    write_wav(os.path.join(SFX, "alert.wav"), sfx_alert(), 0.6)
 
 
 if __name__ == "__main__":
