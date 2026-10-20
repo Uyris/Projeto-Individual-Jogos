@@ -889,18 +889,18 @@ public static class GameBuilder
         Transform b = bar.transform;
 
         AddImage(b, "IconeCristal", UiSpr("icon_crystal"), Color.white, left, new Vector2(60f, 0f), new Vector2(56f, 56f));
-        hud.crystalText = AddText(b, "Cristais", "0/12", pixelFont, 32, UiCyan, TextAnchor.MiddleLeft,
+        hud.crystalText = AddText(b, "Cristais", "0/12", pixelFont, 36, UiCyan, TextAnchor.MiddleLeft,
                                   left, new Vector2(100f, -2f), new Vector2(200f, 60f), new Vector2(0f, 0.5f));
-        AddText(b, "RotuloPontos", "PONTOS", pixelFont, 16, UiMuted, TextAnchor.MiddleLeft,
+        AddText(b, "RotuloPontos", "PONTOS", pixelFont, 22, UiMuted, TextAnchor.MiddleLeft,
                 left, new Vector2(310f, 24f), new Vector2(240f, 30f), new Vector2(0f, 0.5f));
-        hud.scoreText = AddText(b, "Pontos", "00000", pixelFont, 32, UiGold, TextAnchor.MiddleLeft,
+        hud.scoreText = AddText(b, "Pontos", "00000", pixelFont, 36, UiGold, TextAnchor.MiddleLeft,
                                 left, new Vector2(310f, -16f), new Vector2(240f, 50f), new Vector2(0f, 0.5f));
 
-        AddText(b, "RotuloTempo", "TEMPO", pixelFont, 16, UiMuted, TextAnchor.MiddleCenter,
+        AddText(b, "RotuloTempo", "TEMPO", pixelFont, 22, UiMuted, TextAnchor.MiddleCenter,
                 center, new Vector2(0f, 26f), new Vector2(300f, 30f));
-        AddImage(b, "IconeRelogio", UiSpr("icon_clock"), Color.white, center, new Vector2(-196f, -14f), new Vector2(44f, 44f));
-        hud.timeText = AddText(b, "Tempo", "00:00.00", pixelFont, 40, UiText, TextAnchor.MiddleCenter,
-                               center, new Vector2(16f, -14f), new Vector2(380f, 56f));
+        AddImage(b, "IconeRelogio", UiSpr("icon_clock"), Color.white, center, new Vector2(-214f, -14f), new Vector2(44f, 44f));
+        hud.timeText = AddText(b, "Tempo", "00:00.00", pixelFont, 44, UiText, TextAnchor.MiddleCenter,
+                               center, new Vector2(16f, -14f), new Vector2(400f, 56f));
 
         hud.hearts = new Image[3];
         for (int i = 0; i < 3; i++)
@@ -909,13 +909,13 @@ public static class GameBuilder
         hud.heartFull = UiSpr("heart_full");
         hud.heartEmpty = UiSpr("heart_empty");
 
-        AddImage(b, "IconeOxigenio", UiSpr("icon_oxygen"), Color.white, right, new Vector2(-616f, 20f), new Vector2(36f, 36f));
-        (hud.oxygenFill, hud.oxygenFillImage) = AddBar(b, "BarraOxigenio", right, new Vector2(-250f, 20f), new Vector2(330f, 34f), UiCyan);
-        hud.oxygenText = AddText(hud.oxygenFill.parent.parent, "TextoOxigenio", "60s", pixelFont, 16, UiText, TextAnchor.MiddleCenter,
-                                 center, new Vector2(0f, 0f), new Vector2(320f, 30f));
+        AddImage(b, "IconeOxigenio", UiSpr("icon_oxygen"), Color.white, right, new Vector2(-526f, 20f), new Vector2(36f, 36f));
+        (hud.oxygenFill, hud.oxygenFillImage) = AddBar(b, "BarraOxigenio", right, new Vector2(-250f, 20f), new Vector2(240f, 34f), UiCyan);
+        hud.oxygenText = AddText(hud.oxygenFill.parent.parent, "TextoOxigenio", "60s", pixelFont, 20, UiText, TextAnchor.MiddleCenter,
+                                 center, new Vector2(0f, 0f), new Vector2(230f, 30f));
 
-        AddImage(b, "IconeStamina", UiSpr("icon_stamina"), Color.white, right, new Vector2(-616f, -24f), new Vector2(32f, 32f));
-        (hud.staminaFill, hud.staminaFillImage) = AddBar(b, "BarraStamina", right, new Vector2(-250f, -24f), new Vector2(330f, 24f), UiGold);
+        AddImage(b, "IconeStamina", UiSpr("icon_stamina"), Color.white, right, new Vector2(-526f, -24f), new Vector2(32f, 32f));
+        (hud.staminaFill, hud.staminaFillImage) = AddBar(b, "BarraStamina", right, new Vector2(-250f, -24f), new Vector2(240f, 24f), UiGold);
 
         // ---------- mensagens
         hud.messageText = AddText(root, "Mensagem", "", titleFont, 60, new Color(1f, 0.9f, 0.45f), TextAnchor.MiddleCenter,
@@ -987,11 +987,11 @@ public static class GameBuilder
         bg.gameObject.AddComponent<UVScroller>();
 
         AddDecoration(root, Spr("player"), new Vector2(-640f, 60f), 220f, 20f, 0f, 0f);
-        AddDecoration(root, Spr("crystal"), new Vector2(800f, 400f), 120f, 14f, 20f, 1f);
-        AddDecoration(root, Spr("crystal"), new Vector2(760f, -40f), 80f, 10f, -30f, 2f);
-        AddDecoration(root, Spr("crystal"), new Vector2(-780f, -320f), 90f, 12f, 25f, 3f);
+        AddDecoration(root, Spr("crystal"), new Vector2(700f, 470f), 120f, 14f, 20f, 1f);
+        AddDecoration(root, Spr("crystal"), new Vector2(700f, -40f), 80f, 10f, -30f, 2f);
+        AddDecoration(root, Spr("crystal"), new Vector2(-700f, -330f), 90f, 12f, 25f, 3f);
         AddDecoration(root, Spr("alien"), new Vector2(640f, -300f), 170f, 16f, 0f, 4f);
-        AddDecoration(root, Spr("drone"), new Vector2(-820f, 410f), 120f, 10f, 80f, 5f);
+        AddDecoration(root, Spr("drone"), new Vector2(-700f, 470f), 120f, 10f, 80f, 5f);
         AddDecoration(root, Spr("oxygen_tank"), new Vector2(-560f, -280f), 90f, 14f, -15f, 6f);
 
         AddText(root, "Titulo", "COLETOR ESTELAR", pixelFont, 88, UiGold, TextAnchor.MiddleCenter,
@@ -1029,7 +1029,7 @@ public static class GameBuilder
             "Drones patrulham rotas fixas · Alienígenas perseguem você quando te enxergam\n" +
             "Minas ficam paradas · Lasers ligam e desligam: observe o ritmo e passe na hora certa!\n" +
             "O dash gasta stamina e te deixa invulnerável por um instante. Você tem 3 vidas.",
-            bodyFont, 38, UiText, TextAnchor.UpperLeft, new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(1380f, 640f), new Vector2(0.5f, 1f));
+            bodyFont, 36, UiText, TextAnchor.UpperLeft, new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(1440f, 640f), new Vector2(0.5f, 1f));
         Button howBack = AddButton(howWindow, "BotaoVoltar", "VOLTAR", new Vector2(0f, -370f), new Vector2(420f, 76f));
         howRoot.AddComponent<MenuFocus>().firstSelected = howBack.gameObject;
 
@@ -1084,8 +1084,8 @@ public static class GameBuilder
     {
         PlayerSettings.productName = "Coletor Estelar";
         PlayerSettings.companyName = "Yuri Henrique";
-        PlayerSettings.defaultWebScreenWidth = 1280;
-        PlayerSettings.defaultWebScreenHeight = 720;
+        PlayerSettings.defaultWebScreenWidth = 600;
+        PlayerSettings.defaultWebScreenHeight = 480;
         PlayerSettings.runInBackground = true;
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
         PlayerSettings.WebGL.decompressionFallback = true;

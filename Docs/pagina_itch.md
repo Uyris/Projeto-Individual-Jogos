@@ -1,7 +1,7 @@
 # Texto sugerido para a página no itch.io
 
 **Título:** Coletor Estelar
-**Classificação:** HTML (jogável no navegador), viewport 1280 × 720, com o botão de tela cheia ativado
+**Classificação:** HTML (jogável no navegador), viewport 600 × 480, com o botão de tela cheia ativado
 **Capa:** `Docs/capa_itch.png` (630 × 500)
 **Screenshots:** `Docs/screenshot_*.png`
 
